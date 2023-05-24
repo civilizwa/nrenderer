@@ -32,11 +32,17 @@ namespace AccPathTracer::Intersection
         const auto& position = s.position;
         const auto& r = s.radius;
         Vec3 oc = ray.origin - position;
+        // cout << "r.dir, r.ori: " << ray.direction << "  " << ray.origin << endl;
+        // TODO 不同点在这儿，我的代码进来的光全是从光源来的光，没有散射光
+
         float a = glm::dot(ray.direction, ray.direction);
         float b = glm::dot(oc, ray.direction);
         float c = glm::dot(oc, oc) - r*r;
+
         float discriminant = b*b - a*c;
         float sqrtDiscriminant = sqrt(discriminant);
+        // cout << "discriminant: " << discriminant << endl;
+
         if (discriminant > 0) {
             float temp = (-b - sqrtDiscriminant) / a;
             if (temp < tMax && temp >= tMin) {

@@ -46,17 +46,22 @@ namespace AccPathTracer {
                 std::max(tr->v1.z, std::max(tr->v2.z, tr->v3.z)) };
         }
         Bounds3(Plane* pl) {
-            // TODO
+            // TODO: 给平面建BoundingBox
             type = Type::PLANE;
             this->pl = pl;
-            double epsilon = 0.000001;
-            min = Vec3{ pl->position.x - epsilon, pl->position.y - epsilon, pl->position.z - epsilon };
-            max = Vec3{ pl->position.x + epsilon, pl->position.y + epsilon, pl->position.z + epsilon };
+            float epsilon = 0.1;
+
+            // 思路：对于不与AABB平行的平面，直接返回两个点，否则就不会被加进来
+            Vec3 p1 = pl->position;
+            Vec3 p2 = p1 + pl->u + pl->v;
+            min = Vec3{ std::min(p1.x, p2.x), std::min(p1.y, p2.y), std::min(p1.z, p2.z) };
+            max = Vec3{ std::max(p1.x, p2.x), std::max(p1.y, p2.y), std::max(p1.z, p2.z) };
+            // cout << "min: " << min << ", max: " << max << endl;
         }
         Bounds3(Mesh* ms) {
             type = Type::MESH;
             this->ms = ms;
-            // TODO 网格模型咋建BoundingBox啊（应该不用建？）
+            // Mesh类型不用建BoundingBox
         }
 
         Vec3 Centroid() {
@@ -96,8 +101,8 @@ namespace AccPathTracer {
 
     };
     inline bool Bounds3::IntersectP(const Ray& ray, const Vec3& invDir, const std::array<int, 3>& dirIsNeg = { 0, 0, 0 }) {
-        // cout << "ray's dir and ori: " << ray.direction << " " << ray.origin << endl;
-        // cout << "BoundingBox's min and max: " << min << " " << max << endl;
+        // 问题出在这个函数！！它认为与BoundingBox相交的几乎只有来自极狭小区域的光！！
+
 
         if (Inside(ray.origin, *this)) {
             return true;
@@ -123,7 +128,8 @@ namespace AccPathTracer {
         // cout << "t_near = " << t_near << ", t_far = " << t_far << endl;
 
         if (t_far >= 0 && t_near < t_far) {
-            // cout << "here" << endl;
+            // cout << "r.ori: " << ray.origin << endl;
+            // cout << "r.dir: " << ray.direction << endl; // 能通过检测的大部分来自极狭小区域，散射光很少了
             return true;
         }
         return false;
