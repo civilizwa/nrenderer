@@ -38,6 +38,13 @@ namespace AccPathTracer {
 				if (objects[i].type == Node::Type::TRIANGLE) {
 					bounds.push_back(Bounds3(&spscene->triangleBuffer[objects[i].entity]));
 				}
+				// plane和mesh不用构建BoundingBox
+				//if (objects[i].type == Node::Type::PLANE) {
+				//	bounds.push_back(Bounds3(&spscene->planeBuffer[objects[i].entity]));
+				//}
+				//if (objects[i].type == Node::Type::MESH) {
+				//	bounds.push_back(Bounds3(&spscene->meshBuffer[objects[i].entity]));
+				//}
 			}
 		}
 	};
@@ -74,15 +81,15 @@ namespace AccPathTracer {
 
 	inline HitRecord BVHTree::getIntersect(const Ray& ray,BVHNode* node) {
 		HitRecord inter;
-		std::array<int, 3> dirIsNeg;
-		dirIsNeg[0] = int(ray.direction[0] > 0);
-		dirIsNeg[1] = int(ray.direction[1] > 0);
-		dirIsNeg[2] = int(ray.direction[2] > 0);
-		auto direction_inv = Vec3{ 1. / ray.direction.x, 1. / ray.direction.y, 1. / ray.direction.z };
-		if (!node->bound.IntersectP(ray, direction_inv, dirIsNeg)) {
+
+		Vec3 direction_inv = Vec3{ 1. / ray.direction.x, 1. / ray.direction.y, 1. / ray.direction.z };
+		if (!node->bound.IntersectP(ray, direction_inv)) {
+			// cout << "here"; 执行了这里
 			inter = getMissRecord();
 			return inter;
 		}
+
+		// cout << "gere"; // 没有执行这里，程序认为所有光线都没有和任何一个BoundBox相交
 		if (node->left == nullptr && node->right == nullptr) {
 			//叶子节点，求改节点对应实体与光线的交点
 			if (node->bound.type == Bounds3::Type::SPHERE) {
@@ -111,6 +118,7 @@ namespace AccPathTracer {
 
 	inline HitRecord BVHTree::Intersect(const Ray& ray) {
 		if (!root) {
+			// cout << "root is empty"; 没执行这里，root不为空
 			return getMissRecord();
 		}
 		root->bounds = bounds;
@@ -134,12 +142,14 @@ namespace AccPathTracer {
 			node->bound = Union(node->left->bound, node->right->bound);
 			return node;
 		}
+		// 如果有多个物体，则对包围盒进行BVH划分
 		else {
-			Bounds3 centroidBounds;
+			Bounds3 centroidBounds; // 包含所有物体重心坐标的包围盒
 			for (int i = 0; i < node->bounds.size(); ++i) {
 				centroidBounds = Union(centroidBounds, node->bounds[i].Centroid());
 			}
-			int dim = centroidBounds.maxExtent();
+			int dim = centroidBounds.maxExtent(); // 找到覆盖范围最大的坐标轴
+			// 对重心坐标在该轴上的值排序
 			switch (dim) {
 			case 0:
 				std::sort(node->bounds.begin(), node->bounds.end(), [](auto f1, auto f2) {

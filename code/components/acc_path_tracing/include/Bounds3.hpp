@@ -12,8 +12,8 @@ using namespace NRenderer;
 namespace AccPathTracer {
     class Bounds3 {
     public:
-        Vec3 min;
-        Vec3 max;
+        // two points to specify the bounding box
+        Vec3 min, max;
         enum class Type
         {
             SPHERE = 0x1,
@@ -45,9 +45,25 @@ namespace AccPathTracer {
                 std::max(tr->v1.y, std::max(tr->v2.y, tr->v3.y)),
                 std::max(tr->v1.z, std::max(tr->v2.z, tr->v3.z)) };
         }
-        Vec3 Centroid() {
-            return 0.5f * min + 0.5f* max;
+        Bounds3(Plane* pl) {
+            // TODO
+            type = Type::PLANE;
+            this->pl = pl;
+            double epsilon = 0.000001;
+            min = Vec3{ pl->position.x - epsilon, pl->position.y - epsilon, pl->position.z - epsilon };
+            max = Vec3{ pl->position.x + epsilon, pl->position.y + epsilon, pl->position.z + epsilon };
         }
+        Bounds3(Mesh* ms) {
+            type = Type::MESH;
+            this->ms = ms;
+            // TODO 网格模型咋建BoundingBox啊（应该不用建？）
+        }
+
+        Vec3 Centroid() {
+            return 0.5f * min + 0.5f * max;
+        }
+
+        // BoundingBox对角线向量
         Vec3 Diagonal() const { return max - min; }
         inline bool IntersectP(const Ray& ray, const Vec3& invDir,
             const std::array<int, 3>& dirisNeg);
@@ -61,15 +77,32 @@ namespace AccPathTracer {
             else
                 return 2;
         }
+
+        // 判断点p是否在包围盒b内
+        bool Inside(const Vec3& p, const Bounds3& b) const
+        {
+            return (p.x >= b.min.x && p.x <= b.max.x && p.y >= b.min.y &&
+                p.y <= b.max.y && p.z >= b.min.z && p.z <= b.max.z);
+        }
+
         union
         {
             Sphere* sp;
             Triangle* tr;
+            Plane* pl;
+            Mesh* ms;
         };
-        Type type ;
+        Type type;
 
     };
-    inline bool Bounds3::IntersectP(const Ray& ray, const Vec3& invDir, const std::array<int, 3>& dirIsNeg) {
+    inline bool Bounds3::IntersectP(const Ray& ray, const Vec3& invDir, const std::array<int, 3>& dirIsNeg = { 0, 0, 0 }) {
+        // cout << "ray's dir and ori: " << ray.direction << " " << ray.origin << endl;
+        // cout << "BoundingBox's min and max: " << min << " " << max << endl;
+
+        if (Inside(ray.origin, *this)) {
+            return true;
+        }
+
         float t1_min, t1_max, t2_min, t2_max, t3_min, t3_max;
         t1_min = (min[0] - ray.origin[0]) * invDir[0];
         t2_min = (min[1] - ray.origin[1]) * invDir[1];
@@ -77,12 +110,20 @@ namespace AccPathTracer {
         t1_max = (max[0] - ray.origin[0]) * invDir[0];
         t2_max = (max[1] - ray.origin[1]) * invDir[1];
         t3_max = (max[2] - ray.origin[2]) * invDir[2];
-        /*if (!dirIsNeg[0]) std::swap(t1_max, t1_min);
-        if (!dirIsNeg[1]) std::swap(t2_max, t2_min);
-        if (!dirIsNeg[2]) std::swap(t3_max, t3_min);*/
+
+        // 如果direction某一维度为负，那么当这个维度上的O->pMax长度大于O->pMin（假设两个值都为正）时，会得到 tmax < tmin < 0
+        if (ray.direction[0] < 0) std::swap(t1_min, t1_max);
+        if (ray.direction[1] < 0) std::swap(t2_min, t2_max);
+        if (ray.direction[2] < 0) std::swap(t3_min, t3_max);
+
+
         float t_near = std::max(t1_min, std::max(t2_min, t3_min));
         float t_far = std::min(t1_max, std::min(t2_max, t3_max));
-        if (t_near > 0 && t_far > 0 && t_near < t_far) {
+
+        // cout << "t_near = " << t_near << ", t_far = " << t_far << endl;
+
+        if (t_far >= 0 && t_near < t_far) {
+            // cout << "here" << endl;
             return true;
         }
         return false;

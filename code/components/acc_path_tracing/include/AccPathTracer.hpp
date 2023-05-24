@@ -38,9 +38,9 @@ namespace AccPathTracer
         vector<SharedShader> shaderPrograms;
     public:
         AccPathTracerRenderer(SharedScene spScene)
-            : spScene               (spScene)
-            , scene                 (*spScene)
-            , camera                (spScene->camera)
+            : spScene(spScene)
+            , scene(*spScene)
+            , camera(spScene->camera)
         {
             width = scene.renderOption.width;
             height = scene.renderOption.height;
@@ -73,7 +73,7 @@ namespace AccPathTracer
         RGB trace(const Ray& ray, int currDepth);
         HitRecord closestHitObject(const Ray& r);
         tuple<float, Vec3> closestHitLight(const Ray& r);
-        
+
     };
 }
 

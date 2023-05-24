@@ -15,21 +15,21 @@ namespace AccPathTracer
     }
 
     void AccPathTracerRenderer::renderTask(RGBA* pixels, int width, int height, int off, int step) {
-        for(int i=off; i<height; i+=step) {
-            for (int j=0; j<width; j++) {
-                Vec3 color{0, 0, 0};
-                for (int k=0; k < samples; k++) {
+        for (int i = off; i < height; i += step) {
+            for (int j = 0; j < width; j++) {
+                Vec3 color{ 0, 0, 0 };
+                for (int k = 0; k < samples; k++) {
                     auto r = defaultSamplerInstance<UniformInSquare>().sample2d();//随机生成采样点
                     float rx = r.x;
                     float ry = r.y;
-                    float x = (float(j)+rx)/float(width);
-                    float y = (float(i)+ry)/float(height);
+                    float x = (float(j) + rx) / float(width);
+                    float y = (float(i) + ry) / float(height);
                     auto ray = camera.shoot(x, y);
                     color += trace(ray, 0);
                 }
                 color /= samples;
                 color = gamma(color);
-                pixels[(height-i-1)*width+j] = {color, 1};
+                pixels[(height - i - 1) * width + j] = { color, 1 };
             }
         }
     }
@@ -42,7 +42,7 @@ namespace AccPathTracer
             shaderPrograms.push_back(shaderCreator.create(m, scene.textures));
         }
 
-        RGBA* pixels = new RGBA[width*height]{};
+        RGBA* pixels = new RGBA[width * height]{};
 
         // 局部坐标转换成世界坐标
         VertexTransformer vertexTransformer{};
@@ -50,15 +50,15 @@ namespace AccPathTracer
 
         const auto taskNums = 32;
         thread t[taskNums];
-        for (int i=0; i < taskNums; i++) {
+        for (int i = 0; i < taskNums; i++) {
             t[i] = thread(&AccPathTracerRenderer::renderTask,
                 this, pixels, width, height, i, taskNums);
         }
-        for(int i=0; i < taskNums; i++) {
+        for (int i = 0; i < taskNums; i++) {
             t[i].join();
         }
         getServer().logger.log("Done...");
-        return {pixels, width, height};
+        return { pixels, width, height };
     }
 
     void AccPathTracerRenderer::release(const RenderResult& r) {
@@ -69,30 +69,29 @@ namespace AccPathTracer
     HitRecord AccPathTracerRenderer::closestHitObject(const Ray& r) {
         HitRecord closestHit = nullopt;
         float closest = FLOAT_INF;
+        // BVH
         if (acc_type == 1) {
             HitRecord hit = tree->Intersect(r);
             if (hit && hit->t < closest) {
+                // cout << "here";
                 closestHit = hit;
+                return closestHit;
             }
         }
-        else if(acc_type==2)
-        {
-            auto result = kd_tree.find_Node(r);
-
-            for (auto& n : result) {
-                for (auto& b : n->Box_list) {
-                    HitRecord hitRecord;
-                    if (b->type == Bounds3::Type::SPHERE) hitRecord = Intersection::xSphere(r, *(b->sp), 0.01, closest);
-                    else if (b->type == Bounds3::Type::TRIANGLE) hitRecord = Intersection::xTriangle(r, *(b->tr), 0.01, closest);
-                    if (hitRecord && hitRecord->t < closest) {
-                        closest = hitRecord->t;
-                        closestHit = hitRecord;
-                    }
-                }
-            }
-        }
-        
-        
+        //for (auto& s : scene.sphereBuffer) {
+        //    auto hitRecord = Intersection::xSphere(r, s, 0.000001, closest);
+        //    if (hitRecord && hitRecord->t < closest) {
+        //        closest = hitRecord->t;
+        //        closestHit = hitRecord;
+        //    }
+        //}
+        //for (auto& t : scene.triangleBuffer) {
+        //    auto hitRecord = Intersection::xTriangle(r, t, 0.000001, closest);
+        //    if (hitRecord && hitRecord->t < closest) {
+        //        closest = hitRecord->t;
+        //        closestHit = hitRecord;
+        //    }
+        //}
         for (auto& p : scene.planeBuffer) {
             auto hitRecord = Intersection::xPlane(r, p, 0.000001, closest);
             if (hitRecord && hitRecord->t < closest) {
@@ -100,9 +99,30 @@ namespace AccPathTracer
                 closestHit = hitRecord;
             }
         }
-        return closestHit; 
+        return closestHit;
+
+
+        // KD-tree
+        //else if(acc_type==2)
+        //{
+        //    auto result = kd_tree.find_Node(r);
+        //    for (auto& n : result) {
+        //        for (auto& b : n->Box_list) {
+        //            HitRecord hitRecord;
+        //            if (b->type == Bounds3::Type::SPHERE) hitRecord = Intersection::xSphere(r, *(b->sp), 0.01, closest);
+        //            else if (b->type == Bounds3::Type::TRIANGLE) hitRecord = Intersection::xTriangle(r, *(b->tr), 0.01, closest);
+        //            if (hitRecord && hitRecord->t < closest) {
+        //                closest = hitRecord->t;
+        //                closestHit = hitRecord;
+        //            }
+        //        }
+        //    }
+        //}
+
+
+
     }
-    
+
     tuple<float, Vec3> AccPathTracerRenderer::closestHitLight(const Ray& r) {
         Vec3 v = {};
         HitRecord closest = getHitRecord(FLOAT_INF, {}, {}, {});
@@ -126,7 +146,7 @@ namespace AccPathTracer
     RGB AccPathTracerRenderer::trace(const Ray& r, int currDepth) {
         if (currDepth == depth) return scene.ambient.constant;
         auto hitObject = closestHitObject(r);
-        auto [ t, emitted ] = closestHitLight(r);
+        auto [t, emitted] = closestHitLight(r);
         // hit object
         if (hitObject && hitObject->t < t) {
             auto mtlHandle = hitObject->material;
@@ -134,7 +154,7 @@ namespace AccPathTracer
             auto scatteredRay = scattered.ray;
             auto attenuation = scattered.attenuation;
             auto emitted = scattered.emitted;
-            auto next = trace(scatteredRay, currDepth+1);
+            auto next = trace(scatteredRay, currDepth + 1);
             float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);
             float pdf = scattered.pdf;
             /**
@@ -151,7 +171,7 @@ namespace AccPathTracer
             return emitted;
         }
         else {
-            return Vec3{0};
+            return Vec3{ 0 };
         }
     }
 }
