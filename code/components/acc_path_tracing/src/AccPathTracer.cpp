@@ -19,7 +19,7 @@ namespace AccPathTracer
             for (int j = 0; j < width; j++) {
                 Vec3 color{ 0, 0, 0 };
                 for (int k = 0; k < samples; k++) {
-                    auto r = defaultSamplerInstance<UniformInSquare>().sample2d();//随机生成采样点
+                    auto r = defaultSamplerInstance<UniformInSquare>().sample2d(); // 随机生成采样点
                     float rx = r.x;
                     float ry = r.y;
                     float x = (float(j) + rx) / float(width);
@@ -70,23 +70,11 @@ namespace AccPathTracer
         HitRecord closestHit = nullopt;
         float closest = FLOAT_INF;
 
-        for (auto& p : scene.planeBuffer) {
-            auto hitRecord = Intersection::xPlane(r, p, 0.000001, closest);
-            if (hitRecord && hitRecord->t < closest) {
-                closest = hitRecord->t;
-                //cout << "in PLANE: " << closest << endl;
-                closestHit = hitRecord;
-            }
-        }
-
         // BVH
-        if (acc_type == 1) {
-            // cout << "r.ori: " << r.origin << endl; // 这里的光还是各个方向的散射光
-            auto hitRecord = tree->Intersect(r, closest);
-            if (hitRecord /*&& hitRecord->t < closest*/ ) {
-                closest = hitRecord->t;
-                closestHit = hitRecord;
-            }
+        auto hitRecord = tree->Intersect(r, closest);
+        if (hitRecord && hitRecord->t < closest ) {
+            closest = hitRecord->t;
+            closestHit = hitRecord;
         }
         //for (auto& s : scene.sphereBuffer) {
         //    auto hitRecord = Intersection::xSphere(r, s, 0.000001, closest);
@@ -102,10 +90,15 @@ namespace AccPathTracer
         //        closestHit = hitRecord;
         //    }
         //}
-
+        //for (auto& p : scene.planeBuffer) {
+        //    auto hitRecord = Intersection::xPlane(r, p, 0.000001, closest);
+        //    if (hitRecord && hitRecord->t < closest) {
+        //        closest = hitRecord->t;
+        //        closestHit = hitRecord;
+        //    }
+        //}
            
         return closestHit;
-
 
         // KD-tree
         //else if(acc_type==2)
@@ -123,9 +116,6 @@ namespace AccPathTracer
         //        }
         //    }
         //}
-
-
-
     }
 
     tuple<float, Vec3> AccPathTracerRenderer::closestHitLight(const Ray& r) {
@@ -152,16 +142,11 @@ namespace AccPathTracer
         if (currDepth == depth) return scene.ambient.constant;
         auto hitObject = closestHitObject(r);
         auto [t, emitted] = closestHitLight(r);
-        // cout << "t: " << t << endl;
 
-        // if (hitObject)
-            // cout << "hitObject->t: " << hitObject->t << endl;
-        // hit object
         if (hitObject && hitObject->t < t) {
             auto mtlHandle = hitObject->material;
             auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
             auto scatteredRay = scattered.ray;
-            // cout << "scatteredRay.dir" << scatteredRay.direction << endl;
             auto attenuation = scattered.attenuation;
             auto emitted = scattered.emitted;
             auto next = trace(scatteredRay, currDepth + 1);

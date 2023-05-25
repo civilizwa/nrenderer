@@ -32,7 +32,7 @@ namespace SimplePathTracer::Intersection
         const auto& position = s.position;
         const auto& r = s.radius;
         Vec3 oc = ray.origin - position;
-        // cout << "r.dir, r.ori: " << ray.direction << "  " << ray.origin << endl;
+        // cout << "r.ori: " << ray.origin << endl;
 
         float a = glm::dot(ray.direction, ray.direction);
         float b = glm::dot(oc, ray.direction);
