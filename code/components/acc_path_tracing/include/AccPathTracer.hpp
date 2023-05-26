@@ -54,7 +54,7 @@ namespace AccPathTracer
                 tree->root = tree->build(box);
             }
             if (acc_type == 2) {
-                kd_tree.Insert(scene.sphereBuffer, scene.triangleBuffer);
+                // kd_tree.Insert(scene.sphereBuffer, scene.triangleBuffer);
             }
         }
         ~AccPathTracerRenderer() = default;

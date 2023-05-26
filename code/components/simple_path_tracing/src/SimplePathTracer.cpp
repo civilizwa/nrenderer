@@ -72,6 +72,7 @@ namespace SimplePathTracer
             auto hitRecord = Intersection::xSphere(r, s, 0.000001, closest);
             if (hitRecord && hitRecord->t < closest) {
                 closest = hitRecord->t;
+                //cout << "in SPHERE: " << closest << endl;
                 closestHit = hitRecord;
             }
         }
@@ -79,6 +80,7 @@ namespace SimplePathTracer
             auto hitRecord = Intersection::xTriangle(r, t, 0.000001, closest);
             if (hitRecord && hitRecord->t < closest) {
                 closest = hitRecord->t;
+                //cout << "in TRIANGLE: " << closest << endl;
                 closestHit = hitRecord;
             }
         }
@@ -86,6 +88,7 @@ namespace SimplePathTracer
             auto hitRecord = Intersection::xPlane(r, p, 0.000001, closest);
             if (hitRecord && hitRecord->t < closest) {
                 closest = hitRecord->t;
+                //cout << "in PLANE: " << closest << endl;
                 closestHit = hitRecord;
             }
         }
@@ -109,11 +112,16 @@ namespace SimplePathTracer
         if (currDepth == depth) return scene.ambient.constant;
         auto hitObject = closestHitObject(r);
         auto [ t, emitted ] = closestHitLight(r);
+        // cout << "t: " << t << endl;
+
+        // if (hitObject)
+            // cout << "hitObject->t: " << hitObject->t << endl;
         // hit object
         if (hitObject && hitObject->t < t) {
             auto mtlHandle = hitObject->material;
             auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
             auto scatteredRay = scattered.ray;
+            // cout << "scatteredRay.dir" << scatteredRay.direction << endl;
             auto attenuation = scattered.attenuation;
             auto emitted = scattered.emitted;
             auto next = trace(scatteredRay, currDepth+1);

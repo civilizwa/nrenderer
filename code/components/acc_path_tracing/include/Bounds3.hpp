@@ -27,36 +27,47 @@ namespace AccPathTracer {
             max = Vec3(minNum, minNum, minNum);
             min = Vec3(maxNum, maxNum, maxNum);
         }
-        Bounds3(Sphere* sp) {
+        Bounds3(Sphere* sp, Mat4x4 t) {
             type = Type::SPHERE;
             this->sp = sp;
             float r = sp->radius;
-            min = Vec3{ sp->position.x - r, sp->position.y - r, sp->position.z - r };
-            max = Vec3{ sp->position.x + r, sp->position.y + r, sp->position.z + r };
+            Vec3 pos = t * Vec4{ sp->position, 1 };
+            min = Vec3{ pos.x - r, pos.y - r, pos.z - r };
+            max = Vec3{ pos.x + r, pos.y + r, pos.z + r };
         }
-        Bounds3(Triangle* tr) {
+        Bounds3(Triangle* tr, Mat4x4 t) {
             type = Type::TRIANGLE;
             this->tr = tr;
-            min = Vec3{ std::min(tr->v1.x, std::min(tr->v2.x, tr->v3.x)),
-                std::min(tr->v1.y, std::min(tr->v2.y, tr->v3.y)),
-                std::min(tr->v1.z, std::min(tr->v2.z, tr->v3.z)) };
+            Vec3 v1 = t * Vec4{ tr->v1 , 1 }, v2 = t * Vec4{ tr->v2 , 1 }, v3 = t * Vec4{ tr->v3 , 1 };
+            min = Vec3{ std::min(v1.x, std::min(v2.x, v3.x)),
+                std::min(v1.y, std::min(v2.y, v3.y)),
+                std::min(v1.z, std::min(v2.z, v3.z)) };
 
-            max = Vec3{ std::max(tr->v1.x, std::max(tr->v2.x, tr->v3.x)),
-                std::max(tr->v1.y, std::max(tr->v2.y, tr->v3.y)),
-                std::max(tr->v1.z, std::max(tr->v2.z, tr->v3.z)) };
+            max = Vec3{ std::max(v1.x, std::max(v2.x, v3.x)),
+                std::max(v1.y, std::max(v2.y, v3.y)),
+                std::max(v1.z, std::max(v2.z, v3.z)) };
         }
-        Bounds3(Plane* pl) {
-            // TODO
+        Bounds3(Plane* pl, Mat4x4 t) {
+            // 给平面建BoundingBox
             type = Type::PLANE;
             this->pl = pl;
-            double epsilon = 0.000001;
-            min = Vec3{ pl->position.x - epsilon, pl->position.y - epsilon, pl->position.z - epsilon };
-            max = Vec3{ pl->position.x + epsilon, pl->position.y + epsilon, pl->position.z + epsilon };
+            float epsilon = 0.1;
+
+            Vec3 p1 = t * Vec4{ pl->position, 1 };
+            Vec3 p2 = p1 + pl->u + pl->v;
+            Vec3 n = pl->normal;
+
+            // 思路：将两个点分别沿相反的法线方向移动一点距离，构造BoundingBox
+            p1 -= abs(epsilon * n);
+            p2 += abs(epsilon * n);
+            min = Vec3{ std::min(p1.x, p2.x), std::min(p1.y, p2.y), std::min(p1.z, p2.z) };
+            max = Vec3{ std::max(p1.x, p2.x), std::max(p1.y, p2.y), std::max(p1.z, p2.z) };
+            // cout << "min: " << min << ", max: " << max << endl;
         }
         Bounds3(Mesh* ms) {
             type = Type::MESH;
             this->ms = ms;
-            // TODO 网格模型咋建BoundingBox啊（应该不用建？）
+            // Mesh类型不用建BoundingBox
         }
 
         Vec3 Centroid() {
@@ -96,9 +107,7 @@ namespace AccPathTracer {
 
     };
     inline bool Bounds3::IntersectP(const Ray& ray, const Vec3& invDir, const std::array<int, 3>& dirIsNeg = { 0, 0, 0 }) {
-        // cout << "ray's dir and ori: " << ray.direction << " " << ray.origin << endl;
-        // cout << "BoundingBox's min and max: " << min << " " << max << endl;
-
+        // 问题出在这个函数！！它认为与BoundingBox相交的几乎只有来自极狭小区域的光！！
         if (Inside(ray.origin, *this)) {
             return true;
         }
@@ -120,11 +129,9 @@ namespace AccPathTracer {
         float t_near = std::max(t1_min, std::max(t2_min, t3_min));
         float t_far = std::min(t1_max, std::min(t2_max, t3_max));
 
-        // cout << "t_near = " << t_near << ", t_far = " << t_far << endl;
 
         if (t_far >= 0 && t_near < t_far) {
-            // cout << "here" << endl;
-            return true;
+          return true;
         }
         return false;
     }

@@ -37,6 +37,7 @@ namespace AccPathTracer::Intersection
         float c = glm::dot(oc, oc) - r*r;
         float discriminant = b*b - a*c;
         float sqrtDiscriminant = sqrt(discriminant);
+
         if (discriminant > 0) {
             float temp = (-b - sqrtDiscriminant) / a;
             if (temp < tMax && temp >= tMin) {

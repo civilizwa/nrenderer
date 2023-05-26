@@ -10,6 +10,7 @@
 #include "Ray.hpp"
 #include "intersections/HitRecord.hpp"
 #include "intersections/intersections.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
 using namespace std;
 
@@ -17,7 +18,7 @@ namespace AccPathTracer {
 	class BVHNode {
 	public:
 		Bounds3 bound;
-		vector<Bounds3> bounds;//非叶子节点后面所有的盒
+		vector<Bounds3> bounds;// 非叶子节点后面所有的盒
 		BVHNode* left;
 		BVHNode* right;
 		BVHNode() {
@@ -32,19 +33,27 @@ namespace AccPathTracer {
 		}
 		void buildBounds(SharedScene spscene, vector<Node> objects) {
 			for (int i = 0; i < objects.size(); i++) {
+				auto node = objects[i];
+				auto model = spscene->models[node.model];
 				if (objects[i].type == Node::Type::SPHERE) {
-					bounds.push_back(Bounds3(&spscene->sphereBuffer[objects[i].entity]));
+					Mat4x4 t{ 1 };
+					t = glm::translate(t, model.translation);
+					bounds.push_back(Bounds3(&spscene->sphereBuffer[node.entity], t));
 				}
 				if (objects[i].type == Node::Type::TRIANGLE) {
-					bounds.push_back(Bounds3(&spscene->triangleBuffer[objects[i].entity]));
+					Mat4x4 t{ 1 };
+					t = glm::translate(t, model.translation);
+					bounds.push_back(Bounds3(&spscene->triangleBuffer[node.entity], t));
 				}
-				// plane和mesh不用构建BoundingBox
-				//if (objects[i].type == Node::Type::PLANE) {
-				//	bounds.push_back(Bounds3(&spscene->planeBuffer[objects[i].entity]));
-				//}
-				//if (objects[i].type == Node::Type::MESH) {
-				//	bounds.push_back(Bounds3(&spscene->meshBuffer[objects[i].entity]));
-				//}
+				if (objects[i].type == Node::Type::PLANE) {
+					Vec3 n = spscene->planeBuffer[node.entity].normal;
+					Mat4x4 t{ 1 };
+					t = glm::translate(t, model.translation);
+					bounds.push_back(Bounds3(&spscene->planeBuffer[node.entity], t));
+				}
+				if (objects[i].type == Node::Type::MESH) {
+					bounds.push_back(Bounds3(&spscene->meshBuffer[objects[i].entity]));
+				}
 			}
 		}
 	};
@@ -60,8 +69,8 @@ namespace AccPathTracer {
 			spscene = spScene;
 			root = nullptr;
 		}
-		inline HitRecord Intersect(const Ray& ray);
-		inline HitRecord getIntersect(const Ray& ray, BVHNode* root);
+		inline HitRecord Intersect(const Ray& ray, float closest);
+		inline HitRecord getIntersect(const Ray& ray, BVHNode* root, float closest);
 	};
 
 	inline Bounds3 Union(const Bounds3& b1, const Bounds3& b2) {
@@ -79,50 +88,68 @@ namespace AccPathTracer {
 		return ret;
 	}
 
-	inline HitRecord BVHTree::getIntersect(const Ray& ray,BVHNode* node) {
-		HitRecord inter;
+	inline HitRecord BVHTree::getIntersect(const Ray& ray, BVHNode* node, float closest) {
+		HitRecord closestHit;
+		
 
 		Vec3 direction_inv = Vec3{ 1. / ray.direction.x, 1. / ray.direction.y, 1. / ray.direction.z };
-		if (!node->bound.IntersectP(ray, direction_inv)) {
-			// cout << "here"; 执行了这里
-			inter = getMissRecord();
-			return inter;
-		}
 		
+		if (!node->bound.IntersectP(ray, direction_inv)) { // 如果node不是叶节点，那node->bound就是包含node中所有物体的BoundingBox的BoundingBox，很大
+			closestHit = getMissRecord();
+			return closestHit;
+		}
+
 		// cout << "gere"; // 没有执行这里，程序认为所有光线都没有和任何一个BoundBox相交
 		if (node->left == nullptr && node->right == nullptr) {
-			//叶子节点，求改节点对应实体与光线的交点
+
 			if (node->bound.type == Bounds3::Type::SPHERE) {
-				inter = Intersection::xSphere(ray, *node->bound.sp, 0.00001, FLOAT_INF);
+				auto hitRecord = Intersection::xSphere(ray, *node->bound.sp, 0.000001, closest);
+				if (hitRecord && hitRecord->t < closest) {
+					closest = hitRecord->t;
+					closestHit = hitRecord;
+				}
 			}
-			if (node->bound.type == Bounds3::Type::TRIANGLE) {
-				inter = Intersection::xTriangle(ray, *node->bound.tr, 0.00001, FLOAT_INF);
+			else if (node->bound.type == Bounds3::Type::TRIANGLE) {
+				auto hitRecord = Intersection::xTriangle(ray, *node->bound.tr, 0.000001, closest);
+				if (hitRecord && hitRecord->t < closest) {
+					closest = hitRecord->t;
+					closestHit = hitRecord;
+				}
 			}
-			return inter;
+			// 如果给平面建立BoundingBox的话那这里也要加上平面
+			else if (node->bound.type == Bounds3::Type::PLANE) {
+				auto hitRecord = Intersection::xPlane(ray, *node->bound.pl, 0.000001, closest);
+				if (hitRecord && hitRecord->t < closest) {
+					closest = hitRecord->t;
+					closestHit = hitRecord;
+				}
+			}
+			return closestHit;
 		}
-		HitRecord hit1 = this->getIntersect(ray,node->left);
-		HitRecord hit2 = this->getIntersect(ray,node->right);
+
+		// 如果不是叶节点
+		HitRecord hit1 = this->getIntersect(ray, node->left, closest);
+		HitRecord hit2 = this->getIntersect(ray, node->right, closest);
 		if (hit1 == nullopt && hit2 == nullopt) {
 			return nullopt;
 		}
-		else if (hit1!= nullopt) {
+		else if (hit1 != nullopt && hit2 == nullopt) {
 			return hit1;
 		}
-		else if (hit2!= nullopt) {
+		else if (hit2 != nullopt && hit1 == nullopt) {
 			return hit2;
 		}
 		else {
-			hit1->t < hit2->t ? hit1 : hit2;
+			return hit1->t < hit2->t ? hit1 : hit2;
 		}
 	}
 
-	inline HitRecord BVHTree::Intersect(const Ray& ray) {
-		if (!root) {
-			// cout << "root is empty"; 没执行这里，root不为空
+	inline HitRecord BVHTree::Intersect(const Ray& ray, float closest) {
+		if (!BVHTree::root) {
 			return getMissRecord();
 		}
 		root->bounds = bounds;
-		HitRecord hit = BVHTree::getIntersect(ray, root);
+		HitRecord hit = BVHTree::getIntersect(ray, root, closest);
 		return hit;
 	}
 
@@ -133,7 +160,7 @@ namespace AccPathTracer {
 			node->bound = node->bounds[0];
 			node->left = nullptr;
 			node->right = nullptr;
-			//只有在叶子节点才为object赋值
+			// 只有在叶子节点才为object赋值
 			return node;
 		}
 		else if (node->bounds.size() == 2) {

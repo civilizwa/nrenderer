@@ -114,17 +114,18 @@ namespace AccPathTracer {
                 Insert(boxs, mid, e, n->right);
             }
         }
-        void Insert(std::vector<NRenderer::Sphere>& sps, std::vector<NRenderer::Triangle>& trs) {
-            std::vector<Bounds3*> boxs(sps.size() + trs.size());
-            int index = 0;
-            for (auto& sp : sps) {
-                boxs[index++] = new Bounds3(&sp);
-            }
-            for (auto& tr : trs) {
-                boxs[index++] = new Bounds3(&tr);
-            }
-            Insert(boxs, 0, boxs.size(), root);
-        }
+        //void Insert(std::vector<NRenderer::Sphere>& sps, std::vector<NRenderer::Triangle>& trs) {
+        //    std::vector<Bounds3*> boxs(sps.size() + trs.size());
+        //    int index = 0;
+        //    for (auto& sp : sps) {
+        //        Mat4x4 t{ 1 };
+        //        boxs[index++] = new Bounds3(&sp);
+        //    }
+        //    for (auto& tr : trs) {
+        //        boxs[index++] = new Bounds3(&tr);
+        //    }
+        //    Insert(boxs, 0, boxs.size(), root);
+        //}
 
         bool IsHit(const AccPathTracer::Ray& r, KDNode* n) {
             auto inv_dir = 1.0f / r.direction;

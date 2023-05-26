@@ -12,13 +12,13 @@ namespace NRenderer
     using namespace std;
     struct Camera
     {
-        Vec3 position;
-        Vec3 up;
-        Vec3 lookAt;
+        Vec3 position; // 摄像机位置
+        Vec3 up; // 摄像机的向上方向
+        Vec3 lookAt; // 摄影机的目标方向
         float fov;
-        float aperture;
-        float focusDistance;
-        float aspect;
+        float aperture; // 摄像机孔径
+        float focusDistance; // 焦距
+        float aspect; // 屏幕宽高比
         Camera() noexcept
             : position      (0.f, 0.f, -3.f)
             , up            (0.f, 1.f, 0.f)
