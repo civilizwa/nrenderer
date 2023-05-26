@@ -42,6 +42,7 @@ namespace AccPathTracer
             , scene(*spScene)
             , camera(spScene->camera)
         {
+            cout << "Acc:I am Render" << endl;
             width = scene.renderOption.width;
             height = scene.renderOption.height;
             depth = scene.renderOption.depth;

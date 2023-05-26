@@ -13,6 +13,7 @@ namespace AccPathTracer
     class Adapter : public RenderComponent
     {
         void render(SharedScene spScene) {
+            //cout << "position:"<<spScene->camera.position << endl;
             AccPathTracerRenderer renderer{spScene};
             auto renderResult = renderer.render();
             auto [ pixels, width, height ]  = renderResult;

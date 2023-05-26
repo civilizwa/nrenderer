@@ -88,7 +88,7 @@ namespace AccPathTracer {
 			inter = getMissRecord();
 			return inter;
 		}
-
+		
 		// cout << "gere"; // 没有执行这里，程序认为所有光线都没有和任何一个BoundBox相交
 		if (node->left == nullptr && node->right == nullptr) {
 			//叶子节点，求改节点对应实体与光线的交点

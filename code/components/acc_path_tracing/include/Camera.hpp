@@ -27,6 +27,7 @@ namespace AccPathTracer
         Camera(const NRenderer::Camera& camera)
             : camera                (camera)
         {
+            cout << "Acc:I am Camera" << endl;
             position = camera.position;
             lenRadius = camera.aperture / 2.f;
             auto vfov = camera.fov;
