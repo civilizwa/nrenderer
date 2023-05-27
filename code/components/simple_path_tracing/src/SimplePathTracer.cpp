@@ -7,6 +7,9 @@
 
 #include "glm/gtc/matrix_transform.hpp"
 
+const auto taskNums = 32;
+SimplePathTracer::Timer timers[taskNums]{};
+
 namespace SimplePathTracer
 {
     RGB SimplePathTracerRenderer::gamma(const RGB& rgb) {
@@ -24,7 +27,7 @@ namespace SimplePathTracer
                     float x = (float(j)+rx)/float(width);
                     float y = (float(i)+ry)/float(height);
                     auto ray = camera.shoot(x, y);
-                    color += trace(ray, 0);
+                    color += trace(ray, 0, off);
                 }
                 color /= samples;
                 color = gamma(color);
@@ -34,6 +37,9 @@ namespace SimplePathTracer
     }
 
     auto SimplePathTracerRenderer::render() -> RenderResult {
+        for (int i = 0; i < taskNums; i++) {
+            timers[i].init();
+        }
         // shaders
         shaderPrograms.clear();
         ShaderCreator shaderCreator{};
@@ -47,7 +53,6 @@ namespace SimplePathTracer
         VertexTransformer vertexTransformer{};
         vertexTransformer.exec(spScene);
 
-        const auto taskNums = 32;
         thread t[taskNums];
         for (int i=0; i < taskNums; i++) {
             t[i] = thread(&SimplePathTracerRenderer::renderTask,
@@ -57,6 +62,14 @@ namespace SimplePathTracer
             t[i].join();
         }
         getServer().logger.log("Done...");
+
+        float total_ms = 0.0;
+        for (int i = 0; i < taskNums; i++) {
+            total_ms += timers[i].getTime();
+            // cout << "thread" << i << ": " << timers[i].getTime() << "ms." << endl;
+        }
+        cout << "threadNum = " << taskNums << ", closestHitObject time per thread using loop: " << total_ms / taskNums / 1000.0 << "s." << endl;
+
         return {pixels, width, height};
     }
 
@@ -108,23 +121,21 @@ namespace SimplePathTracer
         return { closest->t, v };
     }
 
-    RGB SimplePathTracerRenderer::trace(const Ray& r, int currDepth) {
+    RGB SimplePathTracerRenderer::trace(const Ray& r, int currDepth, int thread_id) {
         if (currDepth == depth) return scene.ambient.constant;
-        auto hitObject = closestHitObject(r);
-        auto [ t, emitted ] = closestHitLight(r);
-        // cout << "t: " << t << endl;
 
-        // if (hitObject)
-            // cout << "hitObject->t: " << hitObject->t << endl;
-        // hit object
+        // timers[thread_id].start();
+        auto hitObject = closestHitObject(r);
+        // timers[thread_id].stop();
+        auto [ t, emitted ] = closestHitLight(r);
+
         if (hitObject && hitObject->t < t) {
             auto mtlHandle = hitObject->material;
             auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
             auto scatteredRay = scattered.ray;
-            // cout << "scatteredRay.dir" << scatteredRay.direction << endl;
             auto attenuation = scattered.attenuation;
             auto emitted = scattered.emitted;
-            auto next = trace(scatteredRay, currDepth+1);
+            auto next = trace(scatteredRay, currDepth+1, thread_id);
             float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);
             float pdf = scattered.pdf;
             /**

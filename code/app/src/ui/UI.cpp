@@ -64,6 +64,7 @@ namespace NRenderer
         views.push_back(new ComponentProgressView({}, {240, 100}, uiContext, manager));
     #pragma endregion _INIT_
     }
+
     void UI::run() {
         const char* glslVersion = "#version 330";
         auto background = Vec4(0.3f, 0.4f, 0.5f, 1.0f);

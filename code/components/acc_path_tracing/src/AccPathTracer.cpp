@@ -6,10 +6,13 @@
 #include "intersections/intersections.hpp"
 
 #include "glm/gtc/matrix_transform.hpp"
-//#include "../include/BVH.hpp"
+
+const auto taskNums = 32;
+AccPathTracer::Timer timers[taskNums]{};
 
 namespace AccPathTracer
 {
+
     RGB AccPathTracerRenderer::gamma(const RGB& rgb) {
         return glm::sqrt(rgb);
     }
@@ -25,16 +28,21 @@ namespace AccPathTracer
                     float x = (float(j) + rx) / float(width);
                     float y = (float(i) + ry) / float(height);
                     auto ray = camera.shoot(x, y);
-                    color += trace(ray, 0);
+                    color += trace(ray, 0, off);
                 }
                 color /= samples;
                 color = gamma(color);
                 pixels[(height - i - 1) * width + j] = { color, 1 };
             }
         }
+        
+
     }
 
     auto AccPathTracerRenderer::render() -> RenderResult {
+        for (int i = 0; i < taskNums; i++) {
+            timers[i].init();
+        }
         // shaders
         shaderPrograms.clear();
         ShaderCreator shaderCreator{};
@@ -48,7 +56,6 @@ namespace AccPathTracer
         VertexTransformer vertexTransformer{};
         vertexTransformer.exec(spScene);
 
-        const auto taskNums = 32;
         thread t[taskNums];
         for (int i = 0; i < taskNums; i++) {
             t[i] = thread(&AccPathTracerRenderer::renderTask,
@@ -58,6 +65,14 @@ namespace AccPathTracer
             t[i].join();
         }
         getServer().logger.log("Done...");
+
+        float total_ms = 0.0;
+        for (int i = 0; i < taskNums; i++) {
+            total_ms += timers[i].getTime();
+            // cout << "thread" << i << ": " << timers[i].getTime() << "ms." << endl;
+        }
+        cout << "threadNum = " << taskNums << ", closestHitObject time per thread with BVH: " << total_ms / taskNums / 1000.0 << "s." << endl;
+
         return { pixels, width, height };
     }
 
@@ -138,9 +153,13 @@ namespace AccPathTracer
         box = temp->bounds;
     }
 
-    RGB AccPathTracerRenderer::trace(const Ray& r, int currDepth) {
+    RGB AccPathTracerRenderer::trace(const Ray& r, int currDepth, int thread_id) {
         if (currDepth == depth) return scene.ambient.constant;
+
+        timers[thread_id].start();
         auto hitObject = closestHitObject(r);
+        timers[thread_id].stop();
+
         auto [t, emitted] = closestHitLight(r);
 
         if (hitObject && hitObject->t < t) {
@@ -149,7 +168,7 @@ namespace AccPathTracer
             auto scatteredRay = scattered.ray;
             auto attenuation = scattered.attenuation;
             auto emitted = scattered.emitted;
-            auto next = trace(scatteredRay, currDepth + 1);
+            auto next = trace(scatteredRay, currDepth + 1, thread_id);
             float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);
             float pdf = scattered.pdf;
             /**
@@ -161,7 +180,6 @@ namespace AccPathTracer
              **/
             return emitted + attenuation * next * n_dot_in / pdf;
         }
-        // 
         else if (t != FLOAT_INF) {
             return emitted;
         }

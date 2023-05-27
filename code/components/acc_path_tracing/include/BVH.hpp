@@ -99,7 +99,7 @@ namespace AccPathTracer {
 			return closestHit;
 		}
 
-		// cout << "gere"; // 没有执行这里，程序认为所有光线都没有和任何一个BoundBox相交
+		// 如果是叶子节点，求该节点对应实体与光线的交点
 		if (node->left == nullptr && node->right == nullptr) {
 
 			if (node->bound.type == Bounds3::Type::SPHERE) {

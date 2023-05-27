@@ -93,6 +93,13 @@ namespace NRenderer
             ImGui::TextWrapped(components[currComponentSelected].description.c_str());
         }
         if (ImGui::Button("Render")) {
+            for (int i = 0; i < components.size(); i++) {
+                if (components[i].name == "AccPathTracer") {
+                    currComponentSelected = i;
+                    break;
+                }
+            }
+            //manager.assetManager.StaticimportScene();
             if (currComponentSelected != -1 && currComponentSelected < components.size()) {
                 auto& rs = manager.renderSettingsManager;
                 SceneBuilder sceneBuilder{manager.assetManager.asset, rs.renderSettings, rs.ambientSettings, rs.camera};

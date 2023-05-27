@@ -6,7 +6,7 @@
 #include "Ray.hpp"
 #include "Camera.hpp"
 #include "intersections/HitRecord.hpp"
-
+#include "Timer.hpp"
 #include "shaders/ShaderCreator.hpp"
 #include "Bounds3.hpp"
 #include "BVH.hpp"
@@ -42,7 +42,6 @@ namespace AccPathTracer
             , scene(*spScene)
             , camera(spScene->camera)
         {
-            cout << "Acc:I am Render" << endl;
             width = scene.renderOption.width;
             height = scene.renderOption.height;
             depth = scene.renderOption.depth;
@@ -71,7 +70,7 @@ namespace AccPathTracer
         void renderTask(RGBA* pixels, int width, int height, int off, int step);
 
         RGB gamma(const RGB& rgb);
-        RGB trace(const Ray& ray, int currDepth);
+        RGB trace(const Ray& ray, int currDepth, int thread_id);
         HitRecord closestHitObject(const Ray& r);
         tuple<float, Vec3> closestHitLight(const Ray& r);
 

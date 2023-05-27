@@ -26,6 +26,19 @@ namespace NRenderer
                 }
             }
         }
+        void StaticimportScene() {
+            //FileFetcher ff;
+            //auto optPath = ff.fetch("All\0*.scn;*.obj\0");
+            auto optPath = string("../../../../../resource/path_tracing_cornel.scn");
+            auto importer = SceneImporterFactory::instance().importer(File::getFileExtension(optPath));
+            bool success = importer->import(asset, optPath);
+            if (!success) {
+                getServer().logger.error(importer->getErrorInfo());
+            }
+            else {
+                getServer().logger.success("成功导入:" + optPath);
+            }
+        }
         void importTexture() {
             TextureImporter tImp{};
             FileFetcher ff;
