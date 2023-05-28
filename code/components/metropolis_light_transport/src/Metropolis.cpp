@@ -1,42 +1,60 @@
+#include "Metropolis.hpp"
 #include "server/Server.hpp"
-#include "AccPathTracer.hpp"
 #include "VertexTransformer.hpp"
 #include "intersections/intersections.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "Raytracer.hpp"
 
 const auto taskNums = 32;
-AccPathTracer::Timer timers[taskNums]{};
+Metropolis::Timer timers[taskNums]{};
 
-namespace AccPathTracer
-{
-
-    RGB AccPathTracerRenderer::gamma(const RGB& rgb) {
+namespace Metropolis {
+    RGB MetropolisRenderer::gamma(const RGB& rgb) {
         return glm::sqrt(rgb);
     }
 
-    void AccPathTracerRenderer::renderTask(RGBA* pixels, int width, int height, int off, int step) {
-        for (int i = off; i < height; i += step) {
-            for (int j = 0; j < width; j++) {
-                Vec3 color{ 0, 0, 0 };
-                for (int k = 0; k < samples; k++) {
-                    auto r = defaultSamplerInstance<UniformInSquare>().sample2d(); // 随机生成采样点
-                    float rx = r.x;
-                    float ry = r.y;
-                    float x = (float(j) + rx) / float(width);
-                    float y = (float(i) + ry) / float(height);
-                    auto ray = camera.shoot(x, y);
-                    color += trace(ray, 0, off);
-                }
-                color /= samples;
-                color = gamma(color);
-                pixels[(height - i - 1) * width + j] = { color, 1 };
+    void MetropolisRenderer::renderTask(RGBA* pixels, int width, int height, int off, int step) {
+        // TODO 应该就改改这里
+        std::vector<Vec3> tmp_image;
+        tmp_image.resize(width * height, Vec3{ 0.0 });
+
+        MLT mlt;
+        int seed = rand();
+        mlt.xor128_.setSeed(off + seed);
+
+        float b;
+        float p_large = 0.1;
+        int acceptedPaths = 0, rejectPaths = 0;
+        PathSample old_path;
+
+        mlt.large_step = 1;
+
+        // 这个循环找到一条有效的初始路径old_path
+        while (1)
+        {
+            mlt.ResetRandomCoords();
+            //Compute new path
+
+            PathSample sample = generate_new_path(camera, info.m_width, info.m_height, mlt);
+            mlt.global_time++;
+
+            //Clear the stack
+            while (!mlt.primary_samples_stack.empty())
+                mlt.primary_samples_stack.pop();
+
+            auto value = luminance(sample.Color);
+            //Check if valid path
+            if (value > 0.0f)
+            {
+                b = value;
+                p_large = 0.5f;
+                old_path = sample;
+                break;
             }
         }
-        
-
     }
 
-    auto AccPathTracerRenderer::render() -> RenderResult {
+    auto MetropolisRenderer::render() -> RenderResult {
         for (int i = 0; i < taskNums; i++) {
             timers[i].init();
         }
@@ -55,7 +73,7 @@ namespace AccPathTracer
 
         thread t[taskNums];
         for (int i = 0; i < taskNums; i++) {
-            t[i] = thread(&AccPathTracerRenderer::renderTask,
+            t[i] = thread(&MetropolisRenderer::renderTask,
                 this, pixels, width, height, i, taskNums);
         }
         for (int i = 0; i < taskNums; i++) {
@@ -73,18 +91,18 @@ namespace AccPathTracer
         return { pixels, width, height };
     }
 
-    void AccPathTracerRenderer::release(const RenderResult& r) {
+    void MetropolisRenderer::release(const RenderResult& r) {
         auto [p, w, h] = r;
         delete[] p;
     }
 
-    HitRecord AccPathTracerRenderer::closestHitObject(const Ray& r) {
+    HitRecord MetropolisRenderer::closestHitObject(const Ray& r) {
         HitRecord closestHit = nullopt;
         float closest = FLOAT_INF;
 
         // BVH
         auto hitRecord = tree->Intersect(r, closest);
-        if (hitRecord && hitRecord->t < closest ) {
+        if (hitRecord && hitRecord->t < closest) {
             closest = hitRecord->t;
             closestHit = hitRecord;
         }
@@ -92,7 +110,7 @@ namespace AccPathTracer
         return closestHit;
     }
 
-    tuple<float, Vec3> AccPathTracerRenderer::closestHitLight(const Ray& r) {
+    tuple<float, Vec3> MetropolisRenderer::closestHitLight(const Ray& r) {
         Vec3 v = {};
         HitRecord closest = getHitRecord(FLOAT_INF, {}, {}, {});
         for (auto& a : scene.areaLightBuffer) {
@@ -104,7 +122,7 @@ namespace AccPathTracer
         }
         return { closest->t, v };
     }
-    void AccPathTracerRenderer::getBox() {
+    void MetropolisRenderer::getBox() {
         BVHTree* tree = new BVHTree(this->spScene);
         BVHNode* temp = new BVHNode();
         vector<Node> objects = spScene->nodes;
@@ -112,7 +130,7 @@ namespace AccPathTracer
         box = temp->bounds;
     }
 
-    RGB AccPathTracerRenderer::trace(const Ray& r, int currDepth, int thread_id) {
+    RGB MetropolisRenderer::trace(const Ray& r, int currDepth, int thread_id) {
         if (currDepth == depth) return scene.ambient.constant;
 
         timers[thread_id].start();
