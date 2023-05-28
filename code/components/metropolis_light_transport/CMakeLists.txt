@@ -6,7 +6,7 @@ set(MY_COMPONENT_NAME "MetropolisLightTransport")
 file(GLOB_RECURSE COMP_HEADER_FILES "./include/*.h" "./include/*.hpp")
 source_group("Header Files" FILES ${COMP_HEADER_FILES})
 file(GLOB_RECURSE COMP_SOURCE_FILES "./src/*.cpp")
-add_library(${MY_COMPONENT_NAME} SHARED "${COMP_SOURCE_FILES}" "${COMP_HEADER_FILES}" "src/Metropolis.cpp")
+add_library(${MY_COMPONENT_NAME} SHARED "${COMP_SOURCE_FILES}" "${COMP_HEADER_FILES}" "src/Metropolis.cpp"   "include/PathContribution.hpp" "include/TMarkovChian.hpp")
 target_link_libraries(${MY_COMPONENT_NAME} NRServer)
 
 include_directories("./include")

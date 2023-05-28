@@ -52,6 +52,10 @@ namespace NRenderer
 		return Vec3(std::max(p1.x, p2.x), std::max(p1.y, p2.y),
 			std::max(p1.z, p2.z));
 	}
+	
+	static Vec3 Reflect(const Vec3& n1, const Vec3& n2) {
+		return n1 - n2 * 2.0f * glm::dot(n1, n2); 
+	}
 
 	inline std::ostream& operator << (std::ostream &out, const Vec3& v) {
 		return out<<"[ "<<v.x<<", "<<v.y<<", "<<v.z<<" ]";

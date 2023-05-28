@@ -3,7 +3,6 @@
 #include "VertexTransformer.hpp"
 #include "intersections/intersections.hpp"
 #include "glm/gtc/matrix_transform.hpp"
-#include "Raytracer.hpp"
 
 const auto taskNums = 32;
 Metropolis::Timer timers[taskNums]{};
@@ -15,43 +14,8 @@ namespace Metropolis {
 
     void MetropolisRenderer::renderTask(RGBA* pixels, int width, int height, int off, int step) {
         // TODO 应该就改改这里
-        std::vector<Vec3> tmp_image;
-        tmp_image.resize(width * height, Vec3{ 0.0 });
-
-        MLT mlt;
-        int seed = rand();
-        mlt.xor128_.setSeed(off + seed);
-
-        float b;
-        float p_large = 0.1;
-        int acceptedPaths = 0, rejectPaths = 0;
-        PathSample old_path;
-
-        mlt.large_step = 1;
-
-        // 这个循环找到一条有效的初始路径old_path
-        while (1)
-        {
-            mlt.ResetRandomCoords();
-            //Compute new path
-
-            PathSample sample = generate_new_path(camera, info.m_width, info.m_height, mlt);
-            mlt.global_time++;
-
-            //Clear the stack
-            while (!mlt.primary_samples_stack.empty())
-                mlt.primary_samples_stack.pop();
-
-            auto value = luminance(sample.Color);
-            //Check if valid path
-            if (value > 0.0f)
-            {
-                b = value;
-                p_large = 0.5f;
-                old_path = sample;
-                break;
-            }
-        }
+        float d = rnd();
+ 
     }
 
     auto MetropolisRenderer::render() -> RenderResult {
@@ -164,4 +128,36 @@ namespace Metropolis {
             return Vec3{ 0 };
         }
     }
+
+    Vec3 MetropolisRenderer::VecRandom(const float rnd1, const float rnd2)
+    {
+        const float temp1 = 2.0 * PI * rnd1, temp2 = 2.0 * rnd2 - 1.0;				// temp1 in [0, 2pi), temp2 in [-1, 1)
+        const float s = sin(temp1), c = cos(temp1), t = sqrt(1.0 - temp2 * temp2); // s, c确定两个方位角，t确定维度
+        return Vec3(s * t, temp2, c * t);
+    }
+
+    Vec3 MetropolisRenderer::VecCosine(const Vec3 n, const float g, const float rnd1, const float rnd2)
+    {
+        // g->inf, temp2->1-, t->0+, 余弦分布就越均匀；反之g = 1，则余弦分布越容易得到法线方向
+        const float temp1 = 2.0 * PI * rnd1, temp2 = pow(rnd2, 1.0 / (g + 1.0));
+        const float s = sin(temp1), c = cos(temp1), t = sqrt(1.0 - temp2 * temp2);
+        Onb base = Vec3(s * t, temp2, c * t);
+        return base.local(n);
+    }
+
+    Vec3 MetropolisRenderer::AccumulatePathContribution(const PathContribution pc, const float mScaling)
+    {
+        if (pc.sc == 0)
+            return Vec3{ 0 };
+        for (int i = 0; i < pc.n; i++)
+        {
+            const int ix = int(pc.c[i].x), iy = int(pc.c[i].y); // 通过顶点找到其贡献的照片的像素位置
+            Vec3 c = pc.c[i].c * mScaling;
+            if ((ix < 0) || (ix >= width) || (iy < 0) || (iy >= height))
+                continue;
+            c += c;
+        }
+    }
+
+
 }

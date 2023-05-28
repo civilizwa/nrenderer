@@ -15,7 +15,7 @@ namespace Metropolis
     using namespace NRenderer;
     class Camera
     {
-    public:
+    private:
         const NRenderer::Camera& camera;
         float lenRadius;
         Vec3 u, v, w;
@@ -24,6 +24,7 @@ namespace Metropolis
         Vec3 lowerLeft;
         Vec3 position;
 
+    public:
         Camera(const NRenderer::Camera& camera)
             : camera                (camera)
         {
