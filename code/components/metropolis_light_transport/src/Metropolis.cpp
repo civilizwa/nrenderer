@@ -1,42 +1,70 @@
+#include "Metropolis.hpp"
 #include "server/Server.hpp"
-#include "AccPathTracer.hpp"
 #include "VertexTransformer.hpp"
 #include "intersections/intersections.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
 const auto taskNums = 32;
-AccPathTracer::Timer timers[taskNums]{};
+Metropolis::Timer timers[taskNums]{};
 
-namespace AccPathTracer
-{
-
-    RGB AccPathTracerRenderer::gamma(const RGB& rgb) {
+namespace Metropolis {
+    RGB MetropolisRenderer::gamma(const RGB& rgb) {
         return glm::sqrt(rgb);
     }
 
-    void AccPathTracerRenderer::renderTask(RGBA* pixels, int width, int height, int off, int step) {
-        for (int i = off; i < height; i += step) {
-            for (int j = 0; j < width; j++) {
-                Vec3 color{ 0, 0, 0 };
-                for (int k = 0; k < samples; k++) {
-                    auto r = defaultSamplerInstance<UniformInSquare>().sample2d(); // 随机生成采样点
-                    float rx = r.x;
-                    float ry = r.y;
-                    float x = (float(j) + rx) / float(width);
-                    float y = (float(i) + ry) / float(height);
-                    auto ray = camera.shoot(x, y);
-                    color += trace(ray, 0, off);
-                }
-                color /= samples;
-                color = gamma(color);
-                pixels[(height - i - 1) * width + j] = { color, 1 };
-            }
-        }
-        
+    void MetropolisRenderer::renderTask(RGBA* pixels, int width, int height, int off, int step) {
+        unsigned long samps = 0; // 采样数
 
+        // estimate normalization constant b应该是用双向路径追踪计算照片最后的平均亮度
+        float b = 0.0;
+        for (int i = 0; i < N_Init; i++) {
+            // fprintf(stderr, "\rPSSMLT Initializing: %5.2f", 100.0 * i / (N_Init));
+            InitRandomNumbers();
+            b += CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents)).sc;
+        }
+        b /= float(N_Init);
+
+        // initialize the Markov chain
+        TMarkovChain current, proposal;
+        InitRandomNumbersByChain(current);
+        current.C = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents));
+
+        // integration
+        for (int i = 0; i < mutations; i++) {
+            samps++;
+            // sample the path
+            float isLargeStepDone;
+            if (rnd() <= LargeStepProb)
+            {
+                proposal = large_step(current);
+                isLargeStepDone = 1.0;
+            }
+            else
+            {
+                proposal = mutate(current);
+                isLargeStepDone = 0.0;
+            }
+            InitRandomNumbersByChain(proposal);
+            proposal.C = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents));
+
+            float a = 1.0; // 接受proposal的概率
+            if (current.C.sc > 0.0)
+                a = MAX(MIN(1.0, proposal.C.sc / current.C.sc), 0.0);
+
+            // accumulate samples
+            // TODO 根据论文公式读懂这个函数的参数和内容
+            if (proposal.C.sc > 0.0)
+                AccumulatePathContribution(pixels, proposal.C, (a + isLargeStepDone) / (proposal.C.sc / b + LargeStepProb));
+            if (current.C.sc > 0.0)
+                AccumulatePathContribution(pixels, current.C, (1.0 - a) / (current.C.sc / b + LargeStepProb));
+
+            // update the chain
+            if (rnd() <= a)
+                current = proposal;
+        }
     }
 
-    auto AccPathTracerRenderer::render() -> RenderResult {
+    auto MetropolisRenderer::render() -> RenderResult {
         for (int i = 0; i < taskNums; i++) {
             timers[i].init();
         }
@@ -52,20 +80,10 @@ namespace AccPathTracer
         // 局部坐标转换成世界坐标
         VertexTransformer vertexTransformer{};
         vertexTransformer.exec(spScene);
-        Model m = spScene->models[0];
-        //在这里生成Bounds
-        if (acc_type == 1) {
-            getBox();
-            tree = new BVHTree(spScene);
-            tree->root = tree->build(box);
-        }
-        if (acc_type == 2) {
-            // kd_tree.Insert(scene.sphereBuffer, scene.triangleBuffer);
-        }
-        //-------------
+
         thread t[taskNums];
         for (int i = 0; i < taskNums; i++) {
-            t[i] = thread(&AccPathTracerRenderer::renderTask,
+            t[i] = thread(&MetropolisRenderer::renderTask,
                 this, pixels, width, height, i, taskNums);
         }
         for (int i = 0; i < taskNums; i++) {
@@ -83,18 +101,18 @@ namespace AccPathTracer
         return { pixels, width, height };
     }
 
-    void AccPathTracerRenderer::release(const RenderResult& r) {
+    void MetropolisRenderer::release(const RenderResult& r) {
         auto [p, w, h] = r;
         delete[] p;
     }
 
-    HitRecord AccPathTracerRenderer::closestHitObject(const Ray& r) {
+    HitRecord MetropolisRenderer::closestHitObject(const Ray& r) {
         HitRecord closestHit = nullopt;
         float closest = FLOAT_INF;
 
         // BVH
         auto hitRecord = tree->Intersect(r, closest);
-        if (hitRecord && hitRecord->t < closest ) {
+        if (hitRecord && hitRecord->t < closest) {
             closest = hitRecord->t;
             closestHit = hitRecord;
         }
@@ -102,7 +120,7 @@ namespace AccPathTracer
         return closestHit;
     }
 
-    tuple<float, Vec3> AccPathTracerRenderer::closestHitLight(const Ray& r) {
+    tuple<float, Vec3> MetropolisRenderer::closestHitLight(const Ray& r) {
         Vec3 v = {};
         HitRecord closest = getHitRecord(FLOAT_INF, {}, {}, {});
         for (auto& a : scene.areaLightBuffer) {
@@ -114,7 +132,7 @@ namespace AccPathTracer
         }
         return { closest->t, v };
     }
-    void AccPathTracerRenderer::getBox() {
+    void MetropolisRenderer::getBox() {
         BVHTree* tree = new BVHTree(this->spScene);
         BVHNode* temp = new BVHNode();
         vector<Node> objects = spScene->nodes;
@@ -122,7 +140,7 @@ namespace AccPathTracer
         box = temp->bounds;
     }
 
-    RGB AccPathTracerRenderer::trace(const Ray& r, int currDepth, int thread_id) {
+    RGB MetropolisRenderer::trace(const Ray& r, int currDepth, int thread_id) {
         if (currDepth == depth) return scene.ambient.constant;
 
         timers[thread_id].start();
@@ -156,4 +174,23 @@ namespace AccPathTracer
             return Vec3{ 0 };
         }
     }
+
+    Vec3 MetropolisRenderer::VecRandom(const float rnd1, const float rnd2)
+    {
+        const float temp1 = 2.0 * PI * rnd1, temp2 = 2.0 * rnd2 - 1.0;				// temp1 in [0, 2pi), temp2 in [-1, 1)
+        const float s = sin(temp1), c = cos(temp1), t = sqrt(1.0 - temp2 * temp2); // s, c确定两个方位角，t确定维度
+        return Vec3(s * t, temp2, c * t);
+    }
+
+    Vec3 MetropolisRenderer::VecCosine(const Vec3 n, const float g, const float rnd1, const float rnd2)
+    {
+        // g->inf, temp2->1-, t->0+, 余弦分布就越均匀；反之g = 1，则余弦分布越容易得到法线方向
+        const float temp1 = 2.0 * PI * rnd1, temp2 = pow(rnd2, 1.0 / (g + 1.0));
+        const float s = sin(temp1), c = cos(temp1), t = sqrt(1.0 - temp2 * temp2);
+        Onb base = Vec3(s * t, temp2, c * t);
+        return base.local(n);
+    }
+
+
+
 }

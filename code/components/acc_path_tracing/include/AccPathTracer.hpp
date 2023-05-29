@@ -12,7 +12,6 @@
 #include "BVH.hpp"
 #include <tuple>
 #include <Bounds3.hpp>
-#include "KD.hpp"
 
 namespace AccPathTracer
 {
@@ -47,6 +46,11 @@ namespace AccPathTracer
             depth = scene.renderOption.depth;
             samples = scene.renderOption.samplesPerPixel;
             acc_type = scene.renderOption.acc_type;
+
+            // BVH
+            /*getBox();
+            tree = new BVHTree(spScene);
+            tree->root = tree->build(box);*/
         }
         ~AccPathTracerRenderer() = default;
 
@@ -55,7 +59,6 @@ namespace AccPathTracer
         void release(const RenderResult& r);
         vector<Bounds3> box;
         BVHTree* tree;
-        KDTree kd_tree;
         void getBox();
 
     private:
