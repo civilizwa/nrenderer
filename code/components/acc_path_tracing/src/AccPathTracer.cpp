@@ -52,7 +52,7 @@ namespace AccPathTracer
         // 局部坐标转换成世界坐标
         VertexTransformer vertexTransformer{};
         vertexTransformer.exec(spScene);
-        Model m = spScene->models[0];
+        
         //在这里生成Bounds
         getBox();
         tree = new BVHTree(spScene);
@@ -71,7 +71,6 @@ namespace AccPathTracer
         float total_ms = 0.0;
         for (int i = 0; i < taskNums; i++) {
             total_ms += timers[i].getTime();
-            // cout << "thread" << i << ": " << timers[i].getTime() << "ms." << endl;
         }
         cout << "threadNum = " << taskNums << ", closestHitObject time per thread with BVH: " << total_ms / taskNums / 1000.0 << "s." << endl;
 

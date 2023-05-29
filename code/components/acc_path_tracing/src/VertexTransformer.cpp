@@ -39,7 +39,7 @@ namespace AccPathTracer
                     // cout << "i = " << i << ", before: " << buffer.positions[i] << endl;
                     Vec4 v = t * Vec4{ buffer.positions[i] , 1 };
                     buffer.positions[i] = v;
-                    cout << "after: " << buffer.positions[i] << endl;
+                    // cout << "after: " << buffer.positions[i] << endl;
                 }
             }
         }

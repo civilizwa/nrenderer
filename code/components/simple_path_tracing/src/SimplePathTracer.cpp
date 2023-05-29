@@ -53,6 +53,34 @@ namespace SimplePathTracer
         VertexTransformer vertexTransformer{};
         vertexTransformer.exec(spScene);
 
+        // 处理mesh类型的.obj
+        vector<Node> objects = spScene->nodes;
+        for (int i = 0; i < objects.size(); i++) {
+            auto node = objects[i];
+            auto model = spScene->models[node.model];
+            if (objects[i].type == Node::Type::MESH) {
+                Mesh buffer = spScene->meshBuffer[node.entity];
+                Handle mat = buffer.material;
+
+                for (int i = 0; i < buffer.positionIndices.size(); i += 3) {
+                    Vec3 v1 = buffer.positions[buffer.positionIndices[i]];
+                    Vec3 v2 = buffer.positions[buffer.positionIndices[i + 1]];
+                    Vec3 v3 = buffer.positions[buffer.positionIndices[i + 2]];
+                    //cout << "转换后v1:(" << v1.x << "," << v1.y << "," << v1.z << ")" << endl;
+                    //cout << "转换后v2:(" << v2.x << "," << v2.y << "," << v2.z << ")" << endl;
+                    //cout << "转换后v3:(" << v3.x << "," << v3.y << "," << v3.z << ")" << endl;
+                    Triangle* t = new Triangle();
+                    t->v1 = v1;
+                    t->v2 = v2;
+                    t->v3 = v3;
+                    t->normal = glm::normalize(glm::cross(t->v2 - t->v1, t->v3 - t->v1));
+                    t->material = mat;
+                    scene.triangleBuffer.push_back(*t);
+                    // cout << "i:" << i << endl;
+                }
+            }
+        }
+
         thread t[taskNums];
         for (int i=0; i < taskNums; i++) {
             t[i] = thread(&SimplePathTracerRenderer::renderTask,
@@ -66,7 +94,6 @@ namespace SimplePathTracer
         float total_ms = 0.0;
         for (int i = 0; i < taskNums; i++) {
             total_ms += timers[i].getTime();
-            // cout << "thread" << i << ": " << timers[i].getTime() << "ms." << endl;
         }
         cout << "threadNum = " << taskNums << ", closestHitObject time per thread using loop: " << total_ms / taskNums / 1000.0 << "s." << endl;
 
@@ -124,9 +151,9 @@ namespace SimplePathTracer
     RGB SimplePathTracerRenderer::trace(const Ray& r, int currDepth, int thread_id) {
         if (currDepth == depth) return scene.ambient.constant;
 
-        // timers[thread_id].start();
+        timers[thread_id].start();
         auto hitObject = closestHitObject(r);
-        // timers[thread_id].stop();
+        timers[thread_id].stop();
         auto [ t, emitted ] = closestHitLight(r);
 
         if (hitObject && hitObject->t < t) {

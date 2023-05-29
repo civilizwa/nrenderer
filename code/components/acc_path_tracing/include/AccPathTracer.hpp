@@ -46,11 +46,6 @@ namespace AccPathTracer
             depth = scene.renderOption.depth;
             samples = scene.renderOption.samplesPerPixel;
             acc_type = scene.renderOption.acc_type;
-
-            // BVH
-            /*getBox();
-            tree = new BVHTree(spScene);
-            tree->root = tree->build(box);*/
         }
         ~AccPathTracerRenderer() = default;
 
