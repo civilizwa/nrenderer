@@ -22,10 +22,12 @@ namespace AccPathTracer
 
         float pdf = 1/(2*PI);
 
+        //albedo:反照率
+        //attenuation：衰减率
         auto attenuation = albedo / PI;
 
         return {
-            Ray{origin, direction},
+            Ray{origin, direction},//发出光线
             attenuation,
             Vec3{0},
             pdf

@@ -27,7 +27,8 @@ namespace Metropolis
         Vec3 horizontal; // 相机的水平方向
         Vec3 lowerLeft; // 视平面左下角的位置
         Vec3 position; // 相机的位置
-        // float dist; // 相机到成像平面的距离
+        float halfHeight;
+        //double dist; // 相机到成像平面的距离
 
         Camera(const NRenderer::Camera& camera)
             : camera                (camera)
@@ -37,7 +38,7 @@ namespace Metropolis
             auto vfov = camera.fov;
             vfov = clamp(vfov, 160.f, 20.f);
             theta = glm::radians(vfov);
-            auto halfHeight = tan(theta/2.f);
+            halfHeight = tan(theta/2.f);
             auto halfWidth = camera.aspect*halfHeight;
             Vec3 up = camera.up;
             w = glm::normalize(camera.position - camera.lookAt);
@@ -49,6 +50,8 @@ namespace Metropolis
             lowerLeft = position - halfWidth*focusDis*u - halfHeight*focusDis*v - focusDis*w; // 相机位置减去成像平面左下角的位置
             horizontal = 2*halfWidth*focusDis*u;
             vertical = 2*halfHeight*focusDis*v;
+            //dist = PixelHeight / (2.0 * tan((fov_ / 2.0) * (PI / 180.0)));
+            
             
         }
 

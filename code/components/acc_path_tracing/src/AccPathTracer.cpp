@@ -127,13 +127,14 @@ namespace AccPathTracer
             //cout << "hitObject's material: " << hitObject->material.getValue() << endl;
 
         auto [t, emitted] = closestHitLight(r);
-
+        //如果光源与交点之间有物体间隔，则计算的是间接光照
         if (hitObject && hitObject->t < t) {
             auto mtlHandle = hitObject->material;
             auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
             auto scatteredRay = scattered.ray;
             auto attenuation = scattered.attenuation;
             auto emitted = scattered.emitted;
+            //由于漫反射发出的光线可言任意方向，因此这里用的是random随机选取的反射光线
             auto next = trace(scatteredRay, currDepth + 1, thread_id);
             float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);
             float pdf = scattered.pdf;
@@ -144,9 +145,11 @@ namespace AccPathTracer
              * atteunation  - BRDF
              * pdf          - p(w)
              **/
+            //emitted:直接光照发出的强度
+            //后部分是漫反射
             return emitted + attenuation * next * n_dot_in / pdf;
         }
-        else if (t != FLOAT_INF) {
+        else if (t != FLOAT_INF) {//直接光照
             return emitted;
         }
         else {
