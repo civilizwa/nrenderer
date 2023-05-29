@@ -11,7 +11,6 @@
 #include "Bounds3.hpp"
 #include "BVH.hpp"
 #include <tuple>
-#include <Bounds3.hpp>
 
 namespace AccPathTracer
 {
