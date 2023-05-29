@@ -55,7 +55,17 @@ namespace AccPathTracer
         // 局部坐标转换成世界坐标
         VertexTransformer vertexTransformer{};
         vertexTransformer.exec(spScene);
-
+        Model m = spScene->models[0];
+        //在这里生成Bounds
+        if (acc_type == 1) {
+            getBox();
+            tree = new BVHTree(spScene);
+            tree->root = tree->build(box);
+        }
+        if (acc_type == 2) {
+            // kd_tree.Insert(scene.sphereBuffer, scene.triangleBuffer);
+        }
+        //-------------
         thread t[taskNums];
         for (int i = 0; i < taskNums; i++) {
             t[i] = thread(&AccPathTracerRenderer::renderTask,

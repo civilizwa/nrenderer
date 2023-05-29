@@ -32,27 +32,38 @@ namespace AccPathTracer {
 			right = r;
 		}
 		void buildBounds(SharedScene spscene, vector<Node> objects) {
+			//cout << "Mesh size:"<<spscene->meshBuffer.size();
 			for (int i = 0; i < objects.size(); i++) {
 				auto node = objects[i];
 				auto model = spscene->models[node.model];
+				
 				if (objects[i].type == Node::Type::SPHERE) {
-					Mat4x4 t{ 1 };
-					t = glm::translate(t, model.translation);
-					bounds.push_back(Bounds3(&spscene->sphereBuffer[node.entity], t));
+					bounds.push_back(Bounds3(&spscene->sphereBuffer[node.entity]));
 				}
 				if (objects[i].type == Node::Type::TRIANGLE) {
-					Mat4x4 t{ 1 };
-					t = glm::translate(t, model.translation);
-					bounds.push_back(Bounds3(&spscene->triangleBuffer[node.entity], t));
+					bounds.push_back(Bounds3(&spscene->triangleBuffer[node.entity]));
 				}
 				if (objects[i].type == Node::Type::PLANE) {
-					Vec3 n = spscene->planeBuffer[node.entity].normal;
-					Mat4x4 t{ 1 };
-					t = glm::translate(t, model.translation);
-					bounds.push_back(Bounds3(&spscene->planeBuffer[node.entity], t));
+					//Vec3 n = spscene->planeBuffer[node.entity].normal;
+					bounds.push_back(Bounds3(&spscene->planeBuffer[node.entity]));
 				}
 				if (objects[i].type == Node::Type::MESH) {
-					bounds.push_back(Bounds3(&spscene->meshBuffer[objects[i].entity]));
+					Mesh buffer = spscene->meshBuffer[node.entity];
+					Handle mat = buffer.material;
+					//cout << "num of positionIndices:" << buffer.positionIndices.size() << endl;
+					//cout << "num of positions:" << buffer.positions.size() << endl;
+					//cout << "meshBuffer[" << node.entity << "]" << endl;
+					for (int i = 0; i < buffer.positionIndices.size(); i += 3) {
+						Vec3 v1 = buffer.positions[buffer.positionIndices[i]];
+						Vec3 v2= buffer.positions[buffer.positionIndices[i+1]];
+						Vec3 v3= buffer.positions[buffer.positionIndices[i+2]];
+						//cout << "转换前v1:(" << v1.x << "," << v1.y << "," << v1.z << ")" << endl;
+						//cout << "转换前v2:(" << v2.x << "," << v2.y << "," << v2.z << ")" << endl;
+						//cout << "转换前v2:(" << v3.x << "," << v3.y << "," << v3.z << ")" << endl;
+						bounds.push_back(Bounds3(v1, v2, v3,mat));
+						//cout << "i:" << i << endl;
+					}
+					
 				}
 			}
 		}
@@ -124,6 +135,15 @@ namespace AccPathTracer {
 					closestHit = hitRecord;
 				}
 			}
+			else if (node->bound.type == Bounds3::Type::MESH) {
+				cout << "判断mesh面" << endl;
+				auto hitRecord = Intersection::xTriangle(ray, *node->bound.ms, 0.000001, closest);
+				if (hitRecord && hitRecord->t < closest) {
+					cout << "该面与光线相交" << endl;
+					closest = hitRecord->t;
+					closestHit = hitRecord;
+				}
+			}
 			return closestHit;
 		}
 
@@ -158,6 +178,7 @@ namespace AccPathTracer {
 		node->bounds = bounds;
 		if (node->bounds.size() == 1) {
 			node->bound = node->bounds[0];
+			//该部分没问题！
 			node->left = nullptr;
 			node->right = nullptr;
 			// 只有在叶子节点才为object赋值

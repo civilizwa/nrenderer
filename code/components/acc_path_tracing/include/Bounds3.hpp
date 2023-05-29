@@ -19,26 +19,28 @@ namespace AccPathTracer {
             SPHERE = 0x1,
             TRIANGLE = 0X2,
             PLANE = 0X3,
-            MESH = 0X4
+            MESH = 0X4,
+            UNDEFINE=0X5,
         };
         Bounds3() {
             double minNum = std::numeric_limits<double>::lowest();
             double maxNum = std::numeric_limits<double>::max();
             max = Vec3(minNum, minNum, minNum);
             min = Vec3(maxNum, maxNum, maxNum);
+            type = Type::UNDEFINE;
         }
-        Bounds3(Sphere* sp, Mat4x4 t) {
+        Bounds3(Sphere* sp) {
             type = Type::SPHERE;
             this->sp = sp;
             float r = sp->radius;
-            Vec3 pos = t * Vec4{ sp->position, 1 };
+            Vec3 pos = sp->position;
             min = Vec3{ pos.x - r, pos.y - r, pos.z - r };
             max = Vec3{ pos.x + r, pos.y + r, pos.z + r };
         }
-        Bounds3(Triangle* tr, Mat4x4 t) {
+        Bounds3(Triangle* tr) {
             type = Type::TRIANGLE;
             this->tr = tr;
-            Vec3 v1 = t * Vec4{ tr->v1 , 1 }, v2 = t * Vec4{ tr->v2 , 1 }, v3 = t * Vec4{ tr->v3 , 1 };
+            Vec3 v1 =tr->v1, v2 =tr->v2, v3 =tr->v3;
             min = Vec3{ std::min(v1.x, std::min(v2.x, v3.x)),
                 std::min(v1.y, std::min(v2.y, v3.y)),
                 std::min(v1.z, std::min(v2.z, v3.z)) };
@@ -47,13 +49,13 @@ namespace AccPathTracer {
                 std::max(v1.y, std::max(v2.y, v3.y)),
                 std::max(v1.z, std::max(v2.z, v3.z)) };
         }
-        Bounds3(Plane* pl, Mat4x4 t) {
+        Bounds3(Plane* pl) {
             // 给平面建BoundingBox
             type = Type::PLANE;
             this->pl = pl;
             float epsilon = 0.1;
 
-            Vec3 p1 = t * Vec4{ pl->position, 1 };
+            Vec3 p1 =pl->position;
             Vec3 p2 = p1 + pl->u + pl->v;
             Vec3 n = pl->normal;
 
@@ -64,9 +66,31 @@ namespace AccPathTracer {
             max = Vec3{ std::max(p1.x, p2.x), std::max(p1.y, p2.y), std::max(p1.z, p2.z) };
             // cout << "min: " << min << ", max: " << max << endl;
         }
-        Bounds3(Mesh* ms) {
+        Bounds3(Vec3 v_1,Vec3 v_2,Vec3 v_3,Handle mat) {
             type = Type::MESH;
-            this->ms = ms;
+
+            Vec3 v1 = v_1, v2 =  v_2 , v3 =v_3;
+            
+            min = Vec3{ std::min(v1.x, std::min(v2.x, v3.x)),
+                std::min(v1.y, std::min(v2.y, v3.y)),
+                std::min(v1.z, std::min(v2.z, v3.z)) };
+
+            max = Vec3{ std::max(v1.x, std::max(v2.x, v3.x)),
+                std::max(v1.y, std::max(v2.y, v3.y)),
+                std::max(v1.z, std::max(v2.z, v3.z)) };
+
+            //在这里建立一个三角形
+            //三角形的法向量：
+            Vec3 e1 = v2 - v1;
+            Vec3 e2 = v3 - v1;
+            Vec3 normal = glm::normalize(glm::cross(e1, e2));
+            this->ms = new Triangle;
+            ms->v1 = v1;
+            ms->v2 = v2;
+            ms->v3 = v3;
+            ms->normal = normal;
+            ms->material = mat;
+            //cout << "由mesh生成Tranigle" << endl;
             // Mesh类型不用建BoundingBox
         }
 
@@ -101,7 +125,7 @@ namespace AccPathTracer {
             Sphere* sp;
             Triangle* tr;
             Plane* pl;
-            Mesh* ms;
+            Triangle* ms;
         };
         Type type;
 
