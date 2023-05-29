@@ -44,6 +44,12 @@ namespace NRenderer
             , v3            ()
             , normal         (0, 0, 1)
         {}
+        Triangle(Vec3 v1_, Vec3 v2_, Vec3 v3_) {
+            v1 = v1_;
+            v2 = v2_;
+            v3 = v3_;
+            normal = glm::cross(v1 - v2, v1 - v3);
+        }
     };
     SHARE(Triangle);
 

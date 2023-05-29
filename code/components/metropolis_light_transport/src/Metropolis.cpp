@@ -52,7 +52,6 @@ namespace Metropolis {
                 a = MAX(MIN(1.0, proposal.C.sc / current.C.sc), 0.0);
 
             // accumulate samples
-            // TODO 根据论文公式读懂这个函数的参数和内容
             if (proposal.C.sc > 0.0)
                 AccumulatePathContribution(pixels, proposal.C, (a + isLargeStepDone) / (proposal.C.sc / b + LargeStepProb));
             if (current.C.sc > 0.0)

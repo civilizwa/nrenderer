@@ -23,6 +23,25 @@ namespace AccPathTracer
                 auto& v = scene.planeBuffer[node.entity].position;
                 v = t*Vec4{v, 1};
             }
+            else if (node.type == Node::Type::MESH) {
+                // TODO 如果是.obj，把所有点平移+缩放到和其他点差不多的位置的大小
+
+                // 这个glm库的矩阵构造方式真的好奇怪...和matlab反着来的
+                Mat4x4 t = {
+                    400, 0, 0, 0,
+                    0, 400, 0, 0,
+                    0, 0, 400, 0,
+                    40, -305, 920, 1
+                };
+
+                Mesh& buffer = scene.meshBuffer[node.entity];
+                for (int i = 0; i < buffer.positions.size(); i += 1) {
+                    // cout << "i = " << i << ", before: " << buffer.positions[i] << endl;
+                    Vec4 v = t * Vec4{ buffer.positions[i] , 1 };
+                    buffer.positions[i] = v;
+                    cout << "after: " << buffer.positions[i] << endl;
+                }
+            }
         }
     }
 }

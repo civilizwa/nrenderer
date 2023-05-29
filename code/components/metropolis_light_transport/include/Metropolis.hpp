@@ -85,6 +85,7 @@ namespace Metropolis
 
         void AccumulatePathContribution(RGBA* pixels, const PathContribution pc, const float mScaling)
         {
+            // TODO
             if (pc.sc == 0)
                 return;
             for (int i = 0; i < pc.n; i++)
