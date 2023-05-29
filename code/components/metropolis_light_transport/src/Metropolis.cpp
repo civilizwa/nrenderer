@@ -13,9 +13,55 @@ namespace Metropolis {
     }
 
     void MetropolisRenderer::renderTask(RGBA* pixels, int width, int height, int off, int step) {
-        // TODO 应该就改改这里
-        float d = rnd();
- 
+        unsigned long samps = 0; // 采样数
+
+        // estimate normalization constant b应该是用双向路径追踪计算照片最后的平均亮度
+        float b = 0.0;
+        for (int i = 0; i < N_Init; i++) {
+            // fprintf(stderr, "\rPSSMLT Initializing: %5.2f", 100.0 * i / (N_Init));
+            InitRandomNumbers();
+            b += CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents)).sc;
+        }
+        b /= float(N_Init);
+
+        // initialize the Markov chain
+        TMarkovChain current, proposal;
+        InitRandomNumbersByChain(current);
+        current.C = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents));
+
+        // integration
+        for (int i = 0; i < mutations; i++) {
+            samps++;
+            // sample the path
+            float isLargeStepDone;
+            if (rnd() <= LargeStepProb)
+            {
+                proposal = large_step(current);
+                isLargeStepDone = 1.0;
+            }
+            else
+            {
+                proposal = mutate(current);
+                isLargeStepDone = 0.0;
+            }
+            InitRandomNumbersByChain(proposal);
+            proposal.C = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents));
+
+            float a = 1.0; // 接受proposal的概率
+            if (current.C.sc > 0.0)
+                a = MAX(MIN(1.0, proposal.C.sc / current.C.sc), 0.0);
+
+            // accumulate samples
+            // TODO 根据论文公式读懂这个函数的参数和内容
+            if (proposal.C.sc > 0.0)
+                AccumulatePathContribution(pixels, proposal.C, (a + isLargeStepDone) / (proposal.C.sc / b + LargeStepProb));
+            if (current.C.sc > 0.0)
+                AccumulatePathContribution(pixels, current.C, (1.0 - a) / (current.C.sc / b + LargeStepProb));
+
+            // update the chain
+            if (rnd() <= a)
+                current = proposal;
+        }
     }
 
     auto MetropolisRenderer::render() -> RenderResult {
@@ -145,19 +191,6 @@ namespace Metropolis {
         return base.local(n);
     }
 
-    Vec3 MetropolisRenderer::AccumulatePathContribution(const PathContribution pc, const float mScaling)
-    {
-        if (pc.sc == 0)
-            return Vec3{ 0 };
-        for (int i = 0; i < pc.n; i++)
-        {
-            const int ix = int(pc.c[i].x), iy = int(pc.c[i].y); // 通过顶点找到其贡献的照片的像素位置
-            Vec3 c = pc.c[i].c * mScaling;
-            if ((ix < 0) || (ix >= width) || (iy < 0) || (iy >= height))
-                continue;
-            c += c;
-        }
-    }
 
 
 }

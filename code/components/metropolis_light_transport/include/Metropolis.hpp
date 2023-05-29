@@ -29,7 +29,6 @@ namespace Metropolis
     class MetropolisRenderer
     {
     private:
-        unsigned long sample_num = 0;
         unsigned long mutations = 10;
         int PathRndsOffset = 0;
         float prnds[NumStates];
@@ -84,7 +83,20 @@ namespace Metropolis
         // 将float映射到[0, 255]，并进行了gamma校正
         int toInt(float x) { return int(pow(1 - exp(-x), 1 / 2.2) * 255 + .5); }
 
-        Vec3 AccumulatePathContribution(const PathContribution pc, const float mScaling);
+        void AccumulatePathContribution(RGBA* pixels, const PathContribution pc, const float mScaling)
+        {
+            if (pc.sc == 0)
+                return;
+            for (int i = 0; i < pc.n; i++)
+            {
+                const int ix = int(pc.c[i].x), iy = int(pc.c[i].y); // 通过顶点找到其贡献的照片的像素位置
+                Vec3 c = pc.c[i].c * mScaling;
+                if ((ix < 0) || (ix >= width) || (iy < 0) || (iy >= height))
+                    continue;
+                pixels[ix + iy * width] += Vec4{ c, 1 }; // TODO 不确定应该怎么写
+                // pixels[(height - ix - 1) * width + iy] += Vec4{ c, 1 };
+            }
+        }
 
         // xorshift PRNG，生成[0, 1) float
         inline float rnd() {
@@ -191,52 +203,77 @@ namespace Metropolis
         // measurement contribution function
         Vec3 PathThroughput(const Path Xb)
         {
+            // TODO
             Vec3 f = Vec3(1.0, 1.0, 1.0);
-            for (int i = 0; i < Xb.n; i++)
-            {
-                if (i == 0)
-                {
-                    float W = 1.0 / float(width * height);
-                    Vec3 d0 = Xb.x[1].p - Xb.x[0].p;
-                    const float dist2 = glm::dot(d0, d0);
-                    d0 = d0 * (1.0f / sqrt(dist2));
-                    const float c = glm::dot(d0, Camera.w);
-                    const float ds2 = (Camera.dist / c) * (Camera.dist / c);
-                    W = W / (c / ds2);
-                    f = f * (W * fabs(glm::dot(d0, Xb.x[1].n) / dist2));
-                }
-                else if (i == (Xb.n - 1))
-                {
-                    if (sph[Xb.x[i].id].refl == LGHT)
-                    {
-                        const Vec3 d0 = glm::normalize((Xb.x[i - 1].p - Xb.x[i].p));
-                        const float L = LambertianBRDF(d0, Xb.x[i].n, d0);
-                        f = f. * (sph[Xb.x[i].id].c * L);
-                    }
-                    else
-                    {
-                        f = f * 0.0f;
-                    }
-                }
-                else
-                {
-                    const Vec3 d0 = glm::normalize((Xb.x[i - 1].p - Xb.x[i].p));
-                    const Vec3 d1 = glm::normalize((Xb.x[i + 1].p - Xb.x[i].p));
-                    float BRDF = 0.0;
-                    if (sph[Xb.x[i].id].refl == DIFF)
-                    {
-                        BRDF = LambertianBRDF(d0, Xb.x[i].n, d1);
-                    }
-                    else if (sph[Xb.x[i].id].refl == GLOS)
-                    {
-                        BRDF = GlossyBRDF(d0, Xb.x[i].n, d1);
-                    }
-                    f = f * (sph[Xb.x[i].id].c * BRDF * GeometryTerm(Xb.x[i], Xb.x[i + 1]));
-                }
-                if (MAX(MAX(f.x, f.y), f.z) == 0.0)
-                    return f;
-            }
             return f;
+        }
+
+        // check if the path can be connected or not (visibility term)
+        bool isConnectable(const Path Xeye, const Path Xlight, float& px, float& py)
+        {
+            // TODO
+            return true;
+        }
+
+        // path probability density
+        // - take the sum of all possible probability densities if the numbers of subpath vertices are not specified
+        float PathProbablityDensity(const Path SampledPath, const int PathLength, const int SpecifiedNumEyeVertices = -1, const int SpecifiedNumLightVertices = -1)
+        {
+            // TODO
+            return 1.0;
+        }
+
+        Ray SampleLightSources(const float rnd1, const float rnd2)
+        {
+            // TODO
+            const Vec3 d = VecRandom(rnd1, rnd2);
+            return Ray{};
+        }
+        Path GenerateLightPath(const int MaxLightEvents)
+        {
+            // TODO
+
+            // 初始化路径采样结果Result
+            Path Result;
+            return Result;
+        }
+
+        Ray SampleCamera(const float rnd1, const float rnd2)
+        {
+            // TODO
+            return Ray{};
+        }
+        Path GenerateEyePath(const int MaxEyeEvents)
+        {
+            // TODO
+
+            // 初始化路径采样结果Result
+            Path Result;
+            return Result;
+        }
+
+        // balance heuristic
+        float MISWeight(const Path SampledPath, const int NumEyeVertices, const int NumLightVertices, const int PathLength)
+        {
+            const float p_i = PathProbablityDensity(SampledPath, PathLength, NumEyeVertices, NumLightVertices);
+            const float p_all = PathProbablityDensity(SampledPath, PathLength);
+            if ((p_i == 0.0) || (p_all == 0.0))
+            {
+                return 0.0;
+            }
+            else
+            {
+                return MAX(MIN(p_i / p_all, 1.0), 0.0);
+            }
+        }
+
+        // BPT connections 双向路径追踪中的连接
+        // - limit the connection to a specific technique if s and t are provided
+        PathContribution CombinePaths(const Path EyePath, const Path LightPath, const int SpecifiedNumEyeVertices = -1, const int SpecifiedNumLightVertices = -1)
+        {
+            // TODO 是一个很重要但是很复杂的函数...
+            PathContribution Result;
+            return Result;
         }
     private:
         void renderTask(RGBA* pixels, int width, int height, int off, int step);
