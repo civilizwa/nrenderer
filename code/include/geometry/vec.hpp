@@ -57,6 +57,10 @@ namespace NRenderer
 		return n1 - n2 * 2.0f * glm::dot(n1, n2); 
 	}
 
+	static float Max(const Vec3& c) {
+		return std::max(c.x, (std::max(c.y, c.z)));
+	}
+
 	inline std::ostream& operator << (std::ostream &out, const Vec3& v) {
 		return out<<"[ "<<v.x<<", "<<v.y<<", "<<v.z<<" ]";
 	}

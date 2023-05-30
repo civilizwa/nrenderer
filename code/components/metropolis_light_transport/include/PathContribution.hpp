@@ -16,10 +16,15 @@
 #define LargeStepProb 0.3
 
 // scene independent constants
-#define NumRNGsPerEvent 2									 // 每个事件的随机数生成数数量
+#define NumRNGsPerEvent 2									 // 每个事件使用的随机数数量
 #define MaxEvents (MaxPathLength + 1)						 // 路径中允许的最大事件（发射、散射、接收光线）数量
 #define NumStatesSubpath ((MaxEvents + 2) * NumRNGsPerEvent) // 子路径的状态信息（例如光的颜色、方向）数量
 #define NumStates (NumStatesSubpath * 2)					 // 完整路径的状态数量，一个完整路径有两个子路径
+
+#define light_id -3
+#define light_area (4.0 * PI * sph[light_id].rad * sph[light_id].rad) // 光源表面积
+#define camera_id -2
+
 
 namespace Metropolis
 {
@@ -54,8 +59,6 @@ namespace Metropolis
 			n = 0;
 			sc = 0.0;
 		}
-
-
 	};
 }
 

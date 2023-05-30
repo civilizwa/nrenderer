@@ -38,20 +38,20 @@ namespace Metropolis {
 				if (objects[i].type == Node::Type::SPHERE) {
 					Mat4x4 t{ 1 };
 					t = glm::translate(t, model.translation);
-					bounds.push_back(Bounds3(&spscene->sphereBuffer[node.entity], t));
+					bounds.push_back(Bounds3(&spscene->sphereBuffer[node.entity], t, bounds.size()));
 				}
-				if (objects[i].type == Node::Type::TRIANGLE) {
+				else if (objects[i].type == Node::Type::TRIANGLE) {
 					Mat4x4 t{ 1 };
 					t = glm::translate(t, model.translation);
-					bounds.push_back(Bounds3(&spscene->triangleBuffer[node.entity], t));
+					bounds.push_back(Bounds3(&spscene->triangleBuffer[node.entity], t, bounds.size()));
 				}
-				if (objects[i].type == Node::Type::PLANE) {
+				else if (objects[i].type == Node::Type::PLANE) {
 					Vec3 n = spscene->planeBuffer[node.entity].normal;
 					Mat4x4 t{ 1 };
 					t = glm::translate(t, model.translation);
-					bounds.push_back(Bounds3(&spscene->planeBuffer[node.entity], t));
+					bounds.push_back(Bounds3(&spscene->planeBuffer[node.entity], t, bounds.size()));
 				}
-				if (objects[i].type == Node::Type::MESH) {
+				else if (objects[i].type == Node::Type::MESH) {
 					bounds.push_back(Bounds3(&spscene->meshBuffer[objects[i].entity]));
 				}
 			}
@@ -91,10 +91,9 @@ namespace Metropolis {
 	inline HitRecord BVHTree::getIntersect(const Ray& ray, BVHNode* node, float closest) {
 		HitRecord closestHit;
 		
-
 		Vec3 direction_inv = Vec3{ 1. / ray.direction.x, 1. / ray.direction.y, 1. / ray.direction.z };
 		
-		if (!node->bound.IntersectP(ray, direction_inv)) { // 如果node不是叶节点，那node->bound就是包含node中所有物体的BoundingBox的BoundingBox，很大
+		if (!node->bound.IntersectP(ray, direction_inv)) {
 			closestHit = getMissRecord();
 			return closestHit;
 		}
@@ -103,14 +102,14 @@ namespace Metropolis {
 		if (node->left == nullptr && node->right == nullptr) {
 
 			if (node->bound.type == Bounds3::Type::SPHERE) {
-				auto hitRecord = Intersection::xSphere(ray, *node->bound.sp, 0.000001, closest);
+				auto hitRecord = Intersection::xSphere(ray, *node->bound.sp, 0.000001, closest, node->bound.node_id);
 				if (hitRecord && hitRecord->t < closest) {
 					closest = hitRecord->t;
 					closestHit = hitRecord;
 				}
 			}
 			else if (node->bound.type == Bounds3::Type::TRIANGLE) {
-				auto hitRecord = Intersection::xTriangle(ray, *node->bound.tr, 0.000001, closest);
+				auto hitRecord = Intersection::xTriangle(ray, *node->bound.tr, 0.000001, closest, node->bound.node_id);
 				if (hitRecord && hitRecord->t < closest) {
 					closest = hitRecord->t;
 					closestHit = hitRecord;
@@ -118,7 +117,7 @@ namespace Metropolis {
 			}
 			// 如果给平面建立BoundingBox的话那这里也要加上平面
 			else if (node->bound.type == Bounds3::Type::PLANE) {
-				auto hitRecord = Intersection::xPlane(ray, *node->bound.pl, 0.000001, closest);
+				auto hitRecord = Intersection::xPlane(ray, *node->bound.pl, 0.000001, closest, node->bound.node_id);
 				if (hitRecord && hitRecord->t < closest) {
 					closest = hitRecord->t;
 					closestHit = hitRecord;

@@ -22,6 +22,7 @@ namespace AccPathTracer
                     auto r = defaultSamplerInstance<UniformInSquare>().sample2d(); // 随机生成采样点
                     float rx = r.x;
                     float ry = r.y;
+                    // 归一化
                     float x = (float(j) + rx) / float(width);
                     float y = (float(i) + ry) / float(height);
                     auto ray = camera.shoot(x, y);

@@ -4,7 +4,7 @@
 #include "intersections/intersections.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
-const auto taskNums = 32;
+const auto taskNums = 1;
 Metropolis::Timer timers[taskNums]{};
 
 namespace Metropolis {
@@ -18,7 +18,9 @@ namespace Metropolis {
         // estimate normalization constant b应该是用双向路径追踪计算照片最后的平均亮度
         float b = 0.0;
         for (int i = 0; i < N_Init; i++) {
-            // fprintf(stderr, "\rPSSMLT Initializing: %5.2f", 100.0 * i / (N_Init));
+            // W：随机数的生成是固定的（也就是每次prnds（它在MetropolisRenderer类里）产生的东西是一样的），且在i = 23时会报错(cannot access value of empty optional)
+            // 你可以在i = 23时逐语句去调试，可能在那时发生了什么相交。有问题多交流（也可以写在注释里）！等我写完数据库后就回来调试。
+            cout << i << endl;
             InitRandomNumbers();
             b += CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents)).sc;
         }
@@ -90,12 +92,12 @@ namespace Metropolis {
         }
         getServer().logger.log("Done...");
 
-        float total_ms = 0.0;
-        for (int i = 0; i < taskNums; i++) {
-            total_ms += timers[i].getTime();
-            // cout << "thread" << i << ": " << timers[i].getTime() << "ms." << endl;
-        }
-        cout << "threadNum = " << taskNums << ", closestHitObject time per thread with BVH: " << total_ms / taskNums / 1000.0 << "s." << endl;
+        //float total_ms = 0.0;
+        //for (int i = 0; i < taskNums; i++) {
+        //    total_ms += timers[i].getTime();
+        //    // cout << "thread" << i << ": " << timers[i].getTime() << "ms." << endl;
+        //}
+        //cout << "threadNum = " << taskNums << ", closestHitObject time per thread with BVH: " << total_ms / taskNums / 1000.0 << "s." << endl;
 
         return { pixels, width, height };
     }
@@ -121,7 +123,7 @@ namespace Metropolis {
 
     tuple<float, Vec3> MetropolisRenderer::closestHitLight(const Ray& r) {
         Vec3 v = {};
-        HitRecord closest = getHitRecord(FLOAT_INF, {}, {}, {});
+        HitRecord closest = getHitRecord(FLOAT_INF, {}, {}, {}, {});
         for (auto& a : scene.areaLightBuffer) {
             auto hitRecord = Intersection::xAreaLight(r, a, 0.000001, closest->t);
             if (hitRecord && closest->t > hitRecord->t) {
@@ -139,41 +141,47 @@ namespace Metropolis {
         box = temp->bounds;
     }
 
-    RGB MetropolisRenderer::trace(const Ray& r, int currDepth, int thread_id) {
-        if (currDepth == depth) return scene.ambient.constant;
+    void MetropolisRenderer::trace(Path &path, const Ray& r, int currDepth) {
+        if (currDepth == depth) return;
 
-        timers[thread_id].start();
         auto hitObject = closestHitObject(r);
-        timers[thread_id].stop();
-
         auto [t, emitted] = closestHitLight(r);
 
         if (hitObject && hitObject->t < t) {
-            auto mtlHandle = hitObject->material;
-            auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
-            auto scatteredRay = scattered.ray;
-            auto attenuation = scattered.attenuation;
-            auto emitted = scattered.emitted;
-            auto next = trace(scatteredRay, currDepth + 1, thread_id);
-            float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);
-            float pdf = scattered.pdf;
-            /**
-             * emitted      - Le(p, w_0)
-             * next         - Li(p, w_i)
-             * n_dot_in     - cos<n, w_i>
-             * atteunation  - BRDF
-             * pdf          - p(w)
-             **/
-            return emitted + attenuation * next * n_dot_in / pdf;
+            //auto mtlHandle = hitObject->material;
+            //auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
+            //auto scatteredRay = scattered.ray;
+            //auto attenuation = scattered.attenuation;
+            //auto emitted = scattered.emitted;
+
+            // 把相交点信息添加进path
+            Vec3 p = hitObject->hitPoint, n = hitObject->normal;
+            n = glm::dot(n, r.direction) < 0 ? n : n * -1.0f; // 让n与r方向相反
+            path.x[path.n] = Vert(p, n, hitObject->id);
+            path.n++;
+            const float rnd0 = prnds[(currDepth - 1) * NumRNGsPerEvent + 0 + PathRndsOffset];
+            const float rnd1 = prnds[(currDepth - 1) * NumRNGsPerEvent + 1 + PathRndsOffset];
+
+            // 对从交点发出的散射光线进行渲染
+            Ray nr;
+            nr.origin = p;
+            nr.direction = VecCosine(n, 1.0, rnd0, rnd1); // 漫反射材质的反射光方向
+
+            trace(path, nr, currDepth + 1);
+
+            //auto next = trace(path, nr, currDepth + 1);
+            //float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);
+            //float pdf = scattered.pdf;
+
         }
         else if (t != FLOAT_INF) {
-            return emitted;
-        }
-        else {
-            return Vec3{ 0 };
+            cout << "int trace(), hit the light source." << endl;
+            path.x[path.n] = Vert(hitObject->hitPoint, hitObject->normal, light_id);
+            path.n++;
         }
     }
 
+    // 沿单位球面分布的向量
     Vec3 MetropolisRenderer::VecRandom(const float rnd1, const float rnd2)
     {
         const float temp1 = 2.0 * PI * rnd1, temp2 = 2.0 * rnd2 - 1.0;				// temp1 in [0, 2pi), temp2 in [-1, 1)

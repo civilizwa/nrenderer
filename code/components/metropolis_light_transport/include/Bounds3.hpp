@@ -14,6 +14,7 @@ namespace Metropolis {
     public:
         // two points to specify the bounding box
         Vec3 min, max;
+        int node_id;
         enum class Type
         {
             SPHERE = 0x1,
@@ -27,7 +28,8 @@ namespace Metropolis {
             max = Vec3(minNum, minNum, minNum);
             min = Vec3(maxNum, maxNum, maxNum);
         }
-        Bounds3(Sphere* sp, Mat4x4 t) {
+        Bounds3(Sphere* sp, Mat4x4 t, int id) {
+            node_id = id;
             type = Type::SPHERE;
             this->sp = sp;
             float r = sp->radius;
@@ -35,7 +37,8 @@ namespace Metropolis {
             min = Vec3{ pos.x - r, pos.y - r, pos.z - r };
             max = Vec3{ pos.x + r, pos.y + r, pos.z + r };
         }
-        Bounds3(Triangle* tr, Mat4x4 t) {
+        Bounds3(Triangle* tr, Mat4x4 t, int id) {
+            node_id = id;
             type = Type::TRIANGLE;
             this->tr = tr;
             Vec3 v1 = t * Vec4{ tr->v1 , 1 }, v2 = t * Vec4{ tr->v2 , 1 }, v3 = t * Vec4{ tr->v3 , 1 };
@@ -47,7 +50,8 @@ namespace Metropolis {
                 std::max(v1.y, std::max(v2.y, v3.y)),
                 std::max(v1.z, std::max(v2.z, v3.z)) };
         }
-        Bounds3(Plane* pl, Mat4x4 t) {
+        Bounds3(Plane* pl, Mat4x4 t, int id) {
+            node_id = id;
             // 给平面建BoundingBox
             type = Type::PLANE;
             this->pl = pl;
