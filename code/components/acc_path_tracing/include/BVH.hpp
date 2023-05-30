@@ -44,6 +44,8 @@ namespace AccPathTracer {
 					bounds.push_back(Bounds3(&spscene->triangleBuffer[node.entity]));
 				}
 				if (objects[i].type == Node::Type::PLANE) {
+					//cout << objects[i].entity << endl;
+					//cout << objects[i].model << endl;
 					bounds.push_back(Bounds3(&spscene->planeBuffer[node.entity]));
 				}
 				if (objects[i].type == Node::Type::MESH) {

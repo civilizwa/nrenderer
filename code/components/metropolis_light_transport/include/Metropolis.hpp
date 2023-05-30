@@ -226,74 +226,74 @@ namespace Metropolis
             return false;
         }
         // measurement contribution function
-        Vec3 PathThroughput(const Path Xb)
-        {
-            // TODO  
-            Vec3 f = Vec3(1.0, 1.0, 1.0);
-            for (int i = 0; i < Xb.n; i++)
-            {
-                if (i == 0)
-                {
-                    double PixelWidth = (double)spScene->renderOption.width;
-                    double PixelHeight = (double)spScene->renderOption.height;
-                    double W = 1.0 / double(PixelWidth * PixelHeight);
-                    Vec3 d0 = Xb.x[1].p - Xb.x[0].p;
-                    const double dist2 = glm::dot(d0, d0);
-                    d0 = d0 * (1.0 / sqrt(dist2));
-                    const double c = glm::dot(d0,camera.w);
-                    //PixelHeight / (2.0 * tan((camera. fov_ / 2.0) * (PI / 180.0)));
-                    double dist = PixelHeight / (2.0*camera.halfHeight);
-                    const double ds2 = (dist / c) * (dist / c);
-                    W = W / (c / ds2);
-                    f = f * (W * fabs(glm::dot(d0, Xb.x[1].n)) / dist2));
-                    //done
-                }
-                else if (i == (Xb.n - 1))
-                {
-                    
-                    //直接击中光源，光源都是局域光，因此需要先判断该点是否在光里
-                    HitRecord closest = getHitRecord(FLOAT_INF, {}, {}, {});
-                    bool isLgt = false;
-                    for (auto& a : scene.areaLightBuffer) {
-                        //TODO:这里需要获取当前点的位置：我理解的是Xb.x[i]..p
-                        if (pointInAreaLight(a, Xb.x[i].p, 0.000001, closest->t)) {
-                            //该点属于点光源
-                            const Vec3 d0 = (Xb.x[i - 1].p - Xb.x[i].p).norm();
-                            const double L= LambertianBRDF(d0, Xb.x[i].n, d0);
-                            //TODO:这里需要获取该点的颜色
-                            //TODO:可能要最后才能把sph换成我们的结构体？
-                            f = f * (sph[Xb.x[i].id].c * L);
-                            isLgt = true;
-                            break;
-                        }
-                        
-                    }
-                    ////不是光源
-                    if (isLgt == false) {
-                        f = f * 0.0;
-                    }
-                        
-                }
-                else
-                {
-                    const Vec d0 = (Xb.x[i - 1].p - Xb.x[i].p).norm();
-                    const Vec d1 = (Xb.x[i + 1].p - Xb.x[i].p).norm();
-                    double BRDF = 0.0;
-                    if (sph[Xb.x[i].id].refl == DIFF)
-                    {
-                        BRDF = LambertianBRDF(d0, Xb.x[i].n, d1);
-                    }
-                    else if (sph[Xb.x[i].id].refl == GLOS)
-                    {
-                        BRDF = GlossyBRDF(d0, Xb.x[i].n, d1);
-                    }
-                    f = f.mul(sph[Xb.x[i].id].c * BRDF * GeometryTerm(Xb.x[i], Xb.x[i + 1]));
-                }
-                if (f.Max() == 0.0)
-                    return f;
-            }
-            return f;
-        }
+        //Vec3 PathThroughput(const Path Xb)
+        //{
+        //    // TODO  
+        //    Vec3 f = Vec3(1.0, 1.0, 1.0);
+        //    for (int i = 0; i < Xb.n; i++)
+        //    {
+        //        if (i == 0)
+        //        {
+        //            float PixelWidth = (float)spScene->renderOption.width;
+        //            float PixelHeight = (float)spScene->renderOption.height;
+        //            float W = 1.0 / float(PixelWidth * PixelHeight);
+        //            Vec3 d0 = Xb.x[1].p - Xb.x[0].p;
+        //            const float dist2 = glm::dot(d0, d0);
+        //            d0 = d0 * (1.0 / sqrt(dist2));
+        //            const float c = glm::dot(d0,camera.w);
+        //            //PixelHeight / (2.0 * tan((camera. fov_ / 2.0) * (PI / 180.0)));
+        //            float dist = PixelHeight / (2.0*camera.halfHeight);
+        //            const float ds2 = (dist / c) * (dist / c);
+        //            W = W / (c / ds2);
+        //            f = f * (W * fabs(glm::dot(d0, Xb.x[1].n)) / dist2));
+        //            //done
+        //        }
+        //        else if (i == (Xb.n - 1))
+        //        {
+        //            
+        //            //直接击中光源，光源都是局域光，因此需要先判断该点是否在光里
+        //            HitRecord closest = getHitRecord(FLOAT_INF, {}, {}, {});
+        //            bool isLgt = false;
+        //            for (auto& a : scene.areaLightBuffer) {
+        //                //TODO:这里需要获取当前点的位置：我理解的是Xb.x[i]..p
+        //                if (pointInAreaLight(a, Xb.x[i].p, 0.000001, closest->t)) {
+        //                    //该点属于点光源
+        //                    const Vec3 d0 = (Xb.x[i - 1].p - Xb.x[i].p).norm();
+        //                    const float L= LambertianBRDF(d0, Xb.x[i].n, d0);
+        //                    //TODO:这里需要获取该点的颜色
+        //                    //TODO:可能要最后才能把sph换成我们的结构体？
+        //                    f = f * (sph[Xb.x[i].id].c * L);
+        //                    isLgt = true;
+        //                    break;
+        //                }
+        //                
+        //            }
+        //            ////不是光源
+        //            if (isLgt == false) {
+        //                f = f * 0.0;
+        //            }
+        //                
+        //        }
+        //        else
+        //        {
+        //            const Vec d0 = (Xb.x[i - 1].p - Xb.x[i].p).norm();
+        //            const Vec d1 = (Xb.x[i + 1].p - Xb.x[i].p).norm();
+        //            float BRDF = 0.0;
+        //            if (sph[Xb.x[i].id].refl == DIFF)
+        //            {
+        //                BRDF = LambertianBRDF(d0, Xb.x[i].n, d1);
+        //            }
+        //            else if (sph[Xb.x[i].id].refl == GLOS)
+        //            {
+        //                BRDF = GlossyBRDF(d0, Xb.x[i].n, d1);
+        //            }
+        //            f = f.mul(sph[Xb.x[i].id].c * BRDF * GeometryTerm(Xb.x[i], Xb.x[i + 1]));
+        //        }
+        //        if (f.Max() == 0.0)
+        //            return f;
+        //    }
+        //    return f;
+        //}
 
         // check if the path can be connected or not (visibility term)
         bool isConnectable(const Path Xeye, const Path Xlight, float& px, float& py)

@@ -91,8 +91,8 @@ namespace NRenderer
             MESH = 0X3
         };
         Type type = Type::SPHERE;
-        Index entity;
-        Index model;
+        Index entity; // 是第几个实体(plane/mesh/triangle/sphere)
+        Index model; // 属于哪个模型
     };
     SHARE(Node);
 

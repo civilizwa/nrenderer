@@ -53,17 +53,29 @@ namespace AccPathTracer {
             // 给平面建BoundingBox
             type = Type::PLANE;
             this->pl = pl;
-            float epsilon = 0.1;
+            float epsilon = 0.01f;
 
+            // 求出平面的四个点
             Vec3 p1 =pl->position;
-            Vec3 p2 = p1 + pl->u + pl->v;
+            Vec3 p2 = p1 + pl->u;
+            Vec3 p3 = p1 + pl->v;
+            Vec3 p4 = p1 + pl->u + pl->v;
             Vec3 n = pl->normal;
 
-            // 思路：将两个点分别沿相反的法线方向移动一点距离，构造BoundingBox
-            p1 -= abs(epsilon * n);
-            p2 += abs(epsilon * n);
-            min = Vec3{ std::min(p1.x, p2.x), std::min(p1.y, p2.y), std::min(p1.z, p2.z) };
-            max = Vec3{ std::max(p1.x, p2.x), std::max(p1.y, p2.y), std::max(p1.z, p2.z) };
+            // 思路：将四个点分别沿相反的法线方向移动一点距离，构造BoundingBox
+            p1 -= epsilon * n;
+            p2 -= epsilon * n;
+            p3 += epsilon * n;
+            p4 += epsilon * n;
+            float minX = std::min(p1.x, std::min(p2.x, std::min(p3.x, p4.x)));
+            float minY = std::min(p1.y, std::min(p2.y, std::min(p3.y, p4.y)));
+            float minZ = std::min(p1.z, std::min(p2.z, std::min(p3.z, p4.z)));
+            float maxX = std::max(p1.x, std::max(p2.x, std::max(p3.x, p4.x)));
+            float maxY = std::max(p1.y, std::max(p2.y, std::max(p3.y, p4.y)));
+            float maxZ = std::max(p1.z, std::max(p2.z, std::max(p3.z, p4.z)));
+            min = Vec3{ minX, minY, minZ };
+            max = Vec3{ maxX, maxY, maxZ };
+            // cout << "min: " << min << ", max: " << max << endl;
         }
         Bounds3(Vec3 v_1,Vec3 v_2,Vec3 v_3,Handle mat) {
             type = Type::MESH;

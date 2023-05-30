@@ -69,13 +69,13 @@ Model Box
 Translation -100 -178 1150
 
 Plane BoxPlane1 White
-N 0 1 0
+N 0.0 1.0 0.0
 P 100 100 0
 U -100 0 100
 V -100 0 -100
 
 Plane BoxPlane2 White
-N 0 -1 0
+N 0.0 -1.0 0.0
 P 100 -100 0
 U -100 0 100
 V -100 0 -100
@@ -112,7 +112,7 @@ Model Pyramid
 Translation 150 -78 900
 
 Triangle Bottom White
-N 0 1 0
+N 0.0 1.0 0.0
 V1 -50 -200 50
 V2 50 -200 50
 V3 0 -200 -50
