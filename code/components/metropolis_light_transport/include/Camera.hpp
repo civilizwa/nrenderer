@@ -28,7 +28,7 @@ namespace Metropolis
         Vec3 lowerLeft; // 视平面左下角的位置
         Vec3 position; // 相机的位置
         float halfHeight;
-        //double dist; // 相机到成像平面的距离
+        // float dist = 0.0f; // 相机到成像平面的距离
 
         Camera(const NRenderer::Camera& camera)
             : camera                (camera)
@@ -50,7 +50,7 @@ namespace Metropolis
             lowerLeft = position - halfWidth*focusDis*u - halfHeight*focusDis*v - focusDis*w; // 相机位置减去成像平面左下角的位置
             horizontal = 2*halfWidth*focusDis*u;
             vertical = 2*halfHeight*focusDis*v;
-            //dist = PixelHeight / (2.0 * tan((fov_ / 2.0) * (PI / 180.0)));
+            // dist =  / (2.0 * tan((camera.fov / 2.0) * (PI / 180.0)));
             
             
         }

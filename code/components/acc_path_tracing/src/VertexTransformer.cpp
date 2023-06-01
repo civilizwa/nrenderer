@@ -27,12 +27,22 @@ namespace AccPathTracer
                 // TODO 如果是.obj，把所有点平移+缩放到和其他点差不多的位置的大小
 
                 // 这个glm库的矩阵构造方式真的好奇怪...和matlab反着来的
+                // for 200/1k bunny
                 Mat4x4 t = {
                     400, 0, 0, 0,
                     0, 400, 0, 0,
                     0, 0, 400, 0,
                     40, -305, 920, 1
                 };
+
+                // for 5k bunny
+                //Mat4x4 t = {
+                //    600, 0, 0, 0,
+                //    0, 600, 0, 0,
+                //    0, 0, 600, 0,
+                //    40, -305, 920, 1
+                //};
+
 
                 Mesh& buffer = scene.meshBuffer[node.entity];
                 for (int i = 0; i < buffer.positions.size(); i += 1) {

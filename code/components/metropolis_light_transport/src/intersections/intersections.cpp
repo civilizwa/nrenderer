@@ -2,7 +2,7 @@
 
 namespace Metropolis::Intersection
 {
-    HitRecord xTriangle(const Ray& ray, const Triangle& t, float tMin, float tMax) {
+    HitRecord xTriangle(const Ray& ray, const Triangle& t, float tMin, float tMax, int id) {
         const auto& v1 = t.v1;
         const auto& v2 = t.v2;
         const auto& v3 = t.v3;
@@ -25,10 +25,10 @@ namespace Metropolis::Intersection
         float invDet = 1.f / det;
         w *= invDet;
         if (w >= tMax || w < tMin) return getMissRecord();
-        return getHitRecord(w, ray.at(w), normal, t.material);
+        return getHitRecord(w, ray.at(w), normal, t.material, id);
 
     }
-    HitRecord xSphere(const Ray& ray, const Sphere& s, float tMin, float tMax) {
+    HitRecord xSphere(const Ray& ray, const Sphere& s, float tMin, float tMax, int id) {
         const auto& position = s.position;
         const auto& r = s.radius;
         Vec3 oc = ray.origin - position;
@@ -43,18 +43,18 @@ namespace Metropolis::Intersection
             if (temp < tMax && temp >= tMin) {
                 auto hitPoint = ray.at(temp);
                 auto normal = (hitPoint - position)/r;
-                return getHitRecord(temp, hitPoint, normal, s.material);
+                return getHitRecord(temp, hitPoint, normal, s.material, id);
             }
             temp = (-b + sqrtDiscriminant) / a;
             if (temp < tMax && temp >= tMin) {
                 auto hitPoint = ray.at(temp);
                 auto normal = (hitPoint - position)/r;
-                return getHitRecord(temp, hitPoint, normal, s.material);
+                return getHitRecord(temp, hitPoint, normal, s.material, id);
             }
         }
         return getMissRecord();
     }
-    HitRecord xPlane(const Ray& ray, const Plane& p, float tMin, float tMax) {
+    HitRecord xPlane(const Ray& ray, const Plane& p, float tMin, float tMax, int id) {
         auto Np_dot_d = glm::dot(ray.direction, p.normal);
         if (Np_dot_d < 0.0000001f && Np_dot_d > -0.00000001f) return getMissRecord();
         float dp = -glm::dot(p.position, p.normal);
@@ -68,7 +68,7 @@ namespace Metropolis::Intersection
         auto res  = d * (hitPoint - p.position);
         auto u = res.x, v = res.y;
         if ((u<=1 && u>=0) && (v<=1 && v>=0)) {
-            return getHitRecord(t, hitPoint, normal, p.material);
+            return getHitRecord(t, hitPoint, normal, p.material, id);
         }
         return getMissRecord();
     }
@@ -87,7 +87,7 @@ namespace Metropolis::Intersection
         auto res  = d * (hitPoint - position);
         auto u = res.x, v = res.y;
         if ((u<=1 && u>=0) && (v<=1 && v>=0)) {
-            return getHitRecord(t, hitPoint, normal, {});
+            return getHitRecord(t, hitPoint, normal, {}, -3 );
         }
         return getMissRecord();
     }

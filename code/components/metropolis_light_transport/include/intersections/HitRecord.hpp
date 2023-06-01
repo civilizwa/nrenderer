@@ -16,6 +16,7 @@ namespace Metropolis
         Vec3 hitPoint;
         Vec3 normal;
         Handle material;
+        int id; // 与哪个面片相交
     };
     using HitRecord = optional<HitRecordBase>;
     inline
@@ -24,8 +25,8 @@ namespace Metropolis
     }
 
     inline
-    HitRecord getHitRecord(float t, const Vec3& hitPoint, const Vec3& normal, Handle material) {
-        return make_optional<HitRecordBase>(t, hitPoint, normal, material);
+    HitRecord getHitRecord(float t, const Vec3& hitPoint, const Vec3& normal, Handle material, int id) {
+        return make_optional<HitRecordBase>(t, hitPoint, normal, material, id);
     }
 }
 
