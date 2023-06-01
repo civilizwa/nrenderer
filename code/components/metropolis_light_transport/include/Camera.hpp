@@ -22,7 +22,7 @@ namespace Metropolis
         const NRenderer::Camera& camera;
         float lenRadius; // 光圈半径
         float theta;
-        Vec3 u, v, w; // w向量表示相机的观察方向，u和v向量与w垂直，用于表示相机的水平和垂直方向
+        Vec3 u, v, w; // w(0, 0, -1)向量表示相机的观察方向，u(-1, 0, 0)和v(0, 1, 0)向量与w垂直，用于表示相机的水平和垂直方向
         Vec3 vertical; // 相机的垂直方向
         Vec3 horizontal; // 相机的水平方向
         Vec3 lowerLeft; // 视平面左下角的位置
@@ -41,7 +41,7 @@ namespace Metropolis
             halfHeight = tan(theta/2.f);
             auto halfWidth = camera.aspect*halfHeight;
             Vec3 up = camera.up;
-            w = glm::normalize(camera.position - camera.lookAt);
+            w = glm::normalize(camera.position - camera.lookAt); // 这个定义得到(0, 0, -1)...和相机发射光线的方向是反的
             u = glm::normalize(glm::cross(up, w));
             v = glm::cross(w, u);
 

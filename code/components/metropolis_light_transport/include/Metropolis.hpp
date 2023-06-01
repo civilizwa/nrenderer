@@ -212,49 +212,56 @@ namespace Metropolis
         //}
         // 
   
+        // 获取Path Xb上第i个Vert的color
+        Vec3 getColor(const Path& Xb, int i) {
+            // 获取color的思路：用id找到它在nodes中的实体类型(plane/triangle/sphere)，然后可以通过这个实体的material.index()获取，然后通过if语句结合.scn文件中的数值得到颜色
+            int color_index = -1;
+            Vec3 color{ 0 };
+            int id = Xb.x[i].id;
+            auto node = scene.nodes[id];
+            if (node.type == Node::Type::SPHERE) {
+                color_index = scene.sphereBuffer[node.entity].material.index();
+            }
+            else if (node.type == Node::Type::TRIANGLE) {
+                color_index = scene.triangleBuffer[node.entity].material.index();
+            }
+            else if (node.type == Node::Type::PLANE) {
+                color_index = scene.planeBuffer[node.entity].material.index();
+            }
+            else if (node.type == Node::Type::MESH) {
+                color_index = scene.meshBuffer[node.entity].material.index();
+            }
+
+            if (color_index == 0)
+                color = { 0.725, 0.71, 0.68 };
+            else if (color_index == 1)
+                color = { 0.63, 0.065, 0.05 };
+            else if (color_index == 2)
+                color = { 0.14, 0.45, 0.091 };
+
+            return color;
+        }
+
         // measurement contribution function
         Vec3 PathThroughput(const Path Xb)
         {
             Vec3 f = Vec3(1.0, 1.0, 1.0);
             for (int i = 0; i < Xb.n; i++)
             {
-                // 获取color的思路：用id找到它在nodes中的实体类型(plane/triangle/sphere)，然后可以通过这个实体的material.index()获取，然后通过if语句结合.scn文件中的数值得到颜色
-                int color_index = -1;
-                Vec3 color{ 0 };
-                int id = Xb.x[i].id;
-                auto node = scene.nodes[id];
-                if (node.type == Node::Type::SPHERE) {
-                    color_index = scene.sphereBuffer[node.entity].material.index();
-                }
-                else if (node.type == Node::Type::TRIANGLE) {
-                    color_index = scene.triangleBuffer[node.entity].material.index();
-                }
-                else if (node.type == Node::Type::PLANE) {
-                    color_index = scene.planeBuffer[node.entity].material.index();
-                }
-                else if (node.type == Node::Type::MESH) {
-                    color_index = scene.meshBuffer[node.entity].material.index();
-                }
-
-                if (color_index == 0)
-                    color = { 0.725, 0.71, 0.68 };
-                else if (color_index == 1)
-                    color = { 0.63, 0.065, 0.05 };
-                else if (color_index == 2)
-                    color = { 0.14, 0.45, 0.091 };
-
+                // 第一个点，camera
                 if (i == 0)
                 {
-                    float W = 1.0 / float(width * height);
-                    Vec3 d0 = Xb.x[1].p - Xb.x[0].p;
-                    const float dist2 = glm::dot(d0, d0);
-                    d0 = d0 * (1.0f / sqrt(dist2));
-                    const float c = glm::dot(d0, camera.w);
-                    float dist = width / (2.0 * camera.halfHeight);
-                    const float ds2 = (dist / c) * (dist / c);
+                    float W = 1.0 / float(width * height); // 每个pixel的weight
+                    Vec3 d0 = Xb.x[1].p - Xb.x[0].p; // camera指向第一个反射点
+                    const float dist2 = glm::dot(d0, d0); // camera到第一个反射点的距离平方
+                    d0 = d0 * (1.0f / sqrt(dist2)); // d0成了一个单位向量
+                    const float c = glm::dot(d0, -camera.w); // d0的z分量
+                    float dist = height / (2.0 * camera.halfHeight); // camera到中心平面的垂线距离
+                    const float ds2 = (dist / c) * (dist / c); // camera到中心平面的d0方向距离
                     W = W / (c / ds2);
                     f = f * (W * fabs(glm::dot(d0, Xb.x[1].n) / dist2));
                 }
+                // 最后一个点，light source
                 else if (i == (Xb.n - 1))
                 {
                     if (Xb.x[i].id == light_id) // 这样写应该可以吧，判断一个点的reflect类型是不是光源的方法就是去看它的id
@@ -262,6 +269,8 @@ namespace Metropolis
                         const Vec3 d0 = glm::normalize((Xb.x[i - 1].p - Xb.x[i].p));
                         const float L = LambertianBRDF(d0, Xb.x[i].n, d0);
 
+                        // 光源的color，直接从.scn文件里找
+                        Vec3 color = { 47.8384, 38.5664, 31.0808 };
                         f = f * (color * L);
                     }
                     else
@@ -269,12 +278,14 @@ namespace Metropolis
                         f = f * 0.0f;
                     }
                 }
+                // 中间的点，物体表面
                 else
                 {
                     const Vec3 d0 = glm::normalize((Xb.x[i - 1].p - Xb.x[i].p));
                     const Vec3 d1 = glm::normalize((Xb.x[i + 1].p - Xb.x[i].p));
                     float BRDF = 0.0;
                     BRDF = LambertianBRDF(d0, Xb.x[i].n, d1);
+                    Vec3 color = getColor(Xb, i);
                     f = f * (color * BRDF * GeometryTerm(Xb.x[i], Xb.x[i + 1]));
                 }
                 if (Max(f) == 0.0)
@@ -288,6 +299,7 @@ namespace Metropolis
         {
             // TODO
             Vec3 Direction;
+
             // 取出两条路线的最后一个点
             const Vert& Xeye_e = Xeye.x[Xeye.n - 1];
             const Vert& Xlight_e = Xlight.x[Xlight.n - 1];
@@ -315,19 +327,20 @@ namespace Metropolis
             else
             {
                 // shadow ray connection
-                Ray r(Xeye_e.p, glm::normalize((Xlight_e.p - Xeye_e.p)));
+                Ray r(Xeye_e.p, glm::normalize((Xlight_e.p - Xeye_e.p))); // 生成一条从eye subpath最后一点指向light subpath最后一点的路径，检查是否会与物体相交
                 auto hitObject = closestHitObject(r);
-                Result = (hitObject && (hitObject->id == Xlight_e.id));
-                Direction = glm::normalize((Xeye.x[1].p - Xeye.x[0].p));
+                Result = (hitObject && (hitObject->id == Xlight_e.id)); // 如果连接光线与场景的相交点是light subpath最后一点，那么说明没被遮挡
+                Direction = glm::normalize((Xeye.x[1].p - Xeye.x[0].p)); // 新光线的出发方向
             }
 
-            // get the pixel location
-            float dist = width / (2.0 * camera.halfHeight);
-            Vec3 ScreenCenter = camera.position + (camera.w * dist);
-            Vec3 ScreenPosition = camera.position + (Direction * (dist / glm::dot(Direction, camera.w))) - ScreenCenter;
-            px = glm::dot(camera.u, ScreenPosition) + (width * 0.5);
+            // get the pixel location 得到新光路的Direction在image plane上的位置(px, py)，检查(px, py)是否在image内
+            // TODO 这一部分的计算还是好复杂...但我觉得我现在的理解是对的
+            float dist = height / (2.0 * camera.halfHeight);
+            Vec3 ScreenCenter = camera.position + (-camera.w * dist); // 屏幕中心，(0, 0, 683.8694)
+            Vec3 ScreenPosition = camera.position + (Direction * (dist / glm::dot(Direction, -camera.w))) - ScreenCenter; // 新光路与image plane(z = 0)的交点
+            px = glm::dot(-camera.u, ScreenPosition) + (width * 0.5);
             py = glm::dot(-camera.v, ScreenPosition) + (height * 0.5);
-            return Result && ((px >= 0) && (px < height) && (py >= 0) && (py < height));
+            return Result && ((px >= 0) && (px < width) && (py >= 0) && (py < height));
         }
 
         // path probability density
@@ -335,9 +348,9 @@ namespace Metropolis
         float PathProbablityDensity(const Path SampledPath, const int PathLength, const int SpecifiedNumEyeVertices = -1, const int SpecifiedNumLightVertices = -1)
         {
             TKahanAdder SumPDFs(0.0);
-            bool Specified = (SpecifiedNumEyeVertices != -1) && (SpecifiedNumLightVertices != -1);
+            bool Specified = (SpecifiedNumEyeVertices != -1) && (SpecifiedNumLightVertices != -1); // 指定了两个子路径上的顶点数量
 
-            float dist = width / (2.0 * camera.halfHeight);
+            float dist = height / (2.0 * camera.halfHeight);
             // number of eye subpath vertices
             for (int NumEyeVertices = 0; NumEyeVertices <= PathLength + 1; NumEyeVertices++)
             {
@@ -367,7 +380,7 @@ namespace Metropolis
                     {
                         p = p * 1.0 / float(width * height);
                         Vec3 Direction0 = glm::normalize(SampledPath.x[1].p - SampledPath.x[0].p);
-                        float CosTheta = glm::dot(Direction0, camera.w);
+                        float CosTheta = glm::dot(Direction0, -camera.w);
                         float DistanceToScreen2 = dist / CosTheta;
                         DistanceToScreen2 = DistanceToScreen2 * DistanceToScreen2;
                         p = p / (CosTheta / DistanceToScreen2);
@@ -428,7 +441,7 @@ namespace Metropolis
             Vec3 base1 = areaLight.position + areaLight.u;
             Vec3 base2 = areaLight.position + areaLight.v;
             float x_len = std::fabs(base1.x - base2.x), z_len = std::fabs(base1.z - base2.z); // 考虑到面光源与xz平面平行，就这么写了
-            Vec3 p = base1 + rnd1 * x_len + rnd2 * z_len;
+            Vec3 p = Vec3{ min(base1.x, base2.x) + rnd1 * x_len, base1.y, min(base1.z, base2.z) + rnd2 * z_len };
 
             // 用沿单位球面分布的向量对y加绝对值取负得到沿单位半球（xz平面以下的半球）分布的向量
             Vec3 d = VecRandom(rnd1, rnd2);
@@ -522,6 +535,7 @@ namespace Metropolis
                 {
                     const int NumLightVertices = (PathLength + 1) - NumEyeVertices;
 
+                    // 依次选EyePath的前NumEyeVertices个点和LightPath前NumLightVertices个点，且PathLength逐渐变长
                     if (NumEyeVertices == 0)
                         continue; // no direct hit to the film (pinhole) 成像平面？
                     if (NumEyeVertices > EyePath.n)
@@ -540,7 +554,7 @@ namespace Metropolis
                     if (!isConnectable(Eyesubpath, Lightsubpath, px, py))
                         continue;
 
-                    // construct a full path
+                    // 既然通过了isConnectable检查，那SampledPath就是新光路的那些点，小索引的是eyepath的点，大索引的是lightpath的点，并且第一个点是camera最后一个点是light source
                     Path SampledPath;
                     for (int i = 0; i < NumEyeVertices; i++)
                         SampledPath.x[i] = EyePath.x[i];

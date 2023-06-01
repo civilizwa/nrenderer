@@ -15,14 +15,21 @@ namespace Metropolis {
     void MetropolisRenderer::renderTask(RGBA* pixels, int width, int height, int off, int step) {
         unsigned long samps = 0; // 采样数
 
+        // 调试CombinePaths->PathProbablityDensity中
+
         // estimate normalization constant b应该是用双向路径追踪计算照片最后的平均亮度
         float b = 0.0;
         for (int i = 0; i < N_Init; i++) {
-            // W：随机数的生成是固定的（也就是每次prnds（它在MetropolisRenderer类里）产生的东西是一样的），且在i = 23时会报错(cannot access value of empty optional)
-            // 你可以在i = 23时逐语句去调试，可能在那时发生了什么相交。有问题多交流（也可以写在注释里）！等我写完数据库后就回来调试。
+            if (i == 60) {
+                cout << "here" << endl;
+            }
+
             cout << i << endl;
             InitRandomNumbers();
-            b += CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents)).sc;
+            Path eyePath = GenerateEyePath(MaxEvents);
+            Path lightPath = GenerateLightPath(MaxEvents);
+            PathContribution pc = CombinePaths(eyePath, lightPath);
+            b += pc.sc;
         }
         b /= float(N_Init);
 
@@ -91,13 +98,6 @@ namespace Metropolis {
             t[i].join();
         }
         getServer().logger.log("Done...");
-
-        //float total_ms = 0.0;
-        //for (int i = 0; i < taskNums; i++) {
-        //    total_ms += timers[i].getTime();
-        //    // cout << "thread" << i << ": " << timers[i].getTime() << "ms." << endl;
-        //}
-        //cout << "threadNum = " << taskNums << ", closestHitObject time per thread with BVH: " << total_ms / taskNums / 1000.0 << "s." << endl;
 
         return { pixels, width, height };
     }
