@@ -3,6 +3,7 @@
 #define __SCATTERED_HPP__
 
 #include "Ray.hpp"
+#include "Glassdata.hpp"
 
 namespace AccPathTracer
 {
@@ -12,6 +13,7 @@ namespace AccPathTracer
         Vec3 attenuation = {};
         Vec3 emitted = {};
         float pdf = {0.f};
+        GlassData data = {};
     };
     
 }

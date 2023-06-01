@@ -12,11 +12,19 @@ namespace NRenderer
         unsigned int height;
         unsigned int depth;
         unsigned int samplesPerPixel;
+        double roughness;
+        double F0;
+        double metalness;
+        int shadeType;
         RenderSettings()
             : width             (500)
             , height            (500)
             , depth             (4)
             , samplesPerPixel   (16)
+            , roughness          (0)
+            , F0                 (0.04)
+            , metalness          (0)
+            ,shadeType            (0)
         {}
     };
     struct AmbientSettings

@@ -3,6 +3,7 @@
 #include "VertexTransformer.hpp"
 #include "intersections/intersections.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "Onb.hpp"
 
 const auto taskNums = 32;
 AccPathTracer::Timer timers[taskNums]{};
@@ -44,7 +45,7 @@ namespace AccPathTracer
         shaderPrograms.clear();
         ShaderCreator shaderCreator{};
         for (auto& m : scene.materials) {
-            shaderPrograms.push_back(shaderCreator.create(m, scene.textures));
+            shaderPrograms.push_back(shaderCreator.create(m, scene.textures,spScene->renderOption));
         }
 
         RGBA* pixels = new RGBA[width * height]{};
@@ -130,24 +131,48 @@ namespace AccPathTracer
         //如果光源与交点之间有物体间隔，则计算的是间接光照
         if (hitObject && hitObject->t < t) {
             auto mtlHandle = hitObject->material;
-            auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
-            auto scatteredRay = scattered.ray;
-            auto attenuation = scattered.attenuation;
-            auto emitted = scattered.emitted;
-            //由于漫反射发出的光线可言任意方向，因此这里用的是random随机选取的反射光线
-            auto next = trace(scatteredRay, currDepth + 1, thread_id);
-            float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);
-            float pdf = scattered.pdf;
-            /**
-             * emitted      - Le(p, w_0)
-             * next         - Li(p, w_i)
-             * n_dot_in     - cos<n, w_i>
-             * atteunation  - BRDF
-             * pdf          - p(w)
-             **/
-            //emitted:直接光照发出的强度
-            //后部分是漫反射
-            return emitted + attenuation * next * n_dot_in / pdf;
+            if (spScene->renderOption.shaderType == 0) {
+                auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
+                if (spScene->materials[mtlHandle.index()].type == 0) {
+                    auto scatteredRay = scattered.ray;
+                    auto attenuation = scattered.attenuation;
+                    auto emitted = scattered.emitted;
+                    //由于漫反射发出的光线可言任意方向，因此这里用的是random随机选取的反射光线
+                    auto next = trace(scatteredRay, currDepth + 1, thread_id);
+                    float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);//cos(N法向量,L光源)
+                    float pdf = scattered.pdf;
+                    /**
+                     * emitted      - Le(p, w_0)
+                     * next         - Li(p, w_i)
+                     * n_dot_in     - cos<n, w_i>
+                     * atteunation  - BRDF
+                     * pdf          - p(w)
+                     **/
+                     //emitted:直接光照发出的强度
+                     //后部分是漫反射
+                    return emitted + attenuation * next * n_dot_in / pdf;
+                }
+                else if (spScene->materials[mtlHandle.index()].type == 2) {//玻璃
+                    auto reflex = scattered.data.reflex;
+                    auto reflex_rate = scattered.data.reflex_rate;
+                    auto refraction = scattered.data.refraction;
+                    auto refraction_rate = scattered.data.refraction_rate;
+                    auto reflex_emit = trace(reflex, currDepth + 1, thread_id);
+                    auto refraction_emit = reflex_rate==Vec3(0.f)?RGB(0.f):trace(refraction, currDepth + 1, thread_id);
+                    return reflex_emit*reflex_rate + refraction_emit * refraction_rate;
+                }
+               
+            }
+            else if (spScene->renderOption.shaderType == 1) {
+                auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
+                auto scatteredRay = scattered.ray;
+                auto specular = scattered.attenuation;
+                auto diffuse = scattered.emitted;
+                //cout << "specular:" << specular << "  diffuse:" << diffuse << endl;
+                auto next= trace(scatteredRay, currDepth + 1, thread_id);
+                return (specular + diffuse) * next;
+            }
+            
         }
         else if (t != FLOAT_INF) {//直接光照
             return emitted;

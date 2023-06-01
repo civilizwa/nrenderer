@@ -9,7 +9,7 @@ namespace AccPathTracer
     class Lambertian : public Shader
     {
     private:
-        Vec3 albedo;
+        Vec3 albedo;//颜色
     public:
         Lambertian(Material& material, vector<Texture>& textures);
         Scattered shade(const Ray& ray, const Vec3& hitPoint, const Vec3& normal) const;

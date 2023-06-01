@@ -55,85 +55,12 @@ End
 Begin Model
 
 Model Sphere
-Translation -100 -228 800
+Translation -25 -100 850
 
 Sphere Sphere White
 N 0 0 1
 P 0 0 0
-R 50
-
-End
-
-Begin Model
-Model Box
-Translation -100 -178 1150
-
-Plane BoxPlane1 White
-N 0 1 0
-P 100 100 0
-U -100 0 100
-V -100 0 -100
-
-Plane BoxPlane2 White
-N 0 -1 0
-P 100 -100 0
-U -100 0 100
-V -100 0 -100
-
-Plane BoxPlane3 White
-N 0.7071 0 -0.7071
-P 100 -100 0
-U 0 200 0
-V -100 0 -100
-
-Plane BoxPlane4 White
-N 0.7071 0 0.7071
-P 100 -100 0
-U 0 200 0
-V -100 0 100
-
-Plane BoxPlane5 White
-N -0.7071 0 0.7071
-P -100 -100 0
-U 0 200 0
-V 100 0 100
-
-Plane BoxPlane6 White
-N -0.7071 0 -0.7071
-P -100 -100 0
-U 0 200 0
-V 100 0 -100
-
-End
-
-Begin Model
-
-Model Pyramid
-Translation 150 -78 900
-
-Triangle Bottom White
-N 0 1 0
-V1 -50 -200 50
-V2 50 -200 50
-V3 0 -200 -50
-
-Triangle T1 White
-N -0.891953 0.0743294 -0.445977
-V1 -50 -200 50
-V2 0 -200 -50
-V3 0 100 0
-
-Triangle T2 White
-N 0.891953 0.0743294 -0.445977
-V1 0 -200 -50
-V2 50 -200 50
-V3 0 100 0
-
-Triangle T3 White
-N 0 0.164399 0.986394
-V1 -50 -200 50
-V2 50 -200 50
-V3 0 100 0
+R 100
 
 End
 

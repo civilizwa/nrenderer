@@ -22,8 +22,8 @@ namespace AccPathTracer
 
         float pdf = 1/(2*PI);
 
-        //albedo:反照率
-        //attenuation：衰减率
+        //albedo:颜色
+        //attenuation：光线在传播过程中的衰减率
         auto attenuation = albedo / PI;
 
         return {
