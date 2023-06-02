@@ -110,8 +110,8 @@ namespace NRenderer
 
         if (ImGui::Button("Render")) {
             for (int i = 0; i < components.size(); i++) {
-                if (components[i].name == "MetropolisLightTransport") {
-                // if (components[i].name == "AccPathTracer") {
+                if (components[i].name == "AccPathTracer") {
+                // if (components[i].name == "") {
                     currComponentSelected = i;
                     break;
                 }

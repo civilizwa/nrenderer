@@ -162,6 +162,12 @@ namespace AccPathTracer
                     auto refraction_emit = reflex_rate==Vec3(0.f)?RGB(0.f):trace(refraction, currDepth + 1, thread_id);
                     return reflex_emit*reflex_rate + refraction_emit * refraction_rate;
                 }
+                else if (spScene->materials[mtlHandle.index()].type == 1) {//光滑导体
+                    auto L = scattered.ray;
+                    auto attenuation = scattered.attenuation;
+                    auto next = trace(L, currDepth + 1, thread_id);
+                    return attenuation * next;
+                }
                
             }
             else if (spScene->renderOption.shaderType == 1) {
