@@ -62,6 +62,11 @@ namespace Metropolis {
             Vec3 p2 = p1 + pl->u;
             Vec3 p3 = p1 + pl->v;
             Vec3 p4 = p1 + pl->u + pl->v;
+            p1 = t * Vec4{ p1, 1 };
+            p2 = t * Vec4{ p2, 1 };
+            p3 = t * Vec4{ p3, 1 };
+            p4 = t * Vec4{ p4, 1 };
+
             Vec3 n = pl->normal;
 
             // 思路：将四个点分别沿相反的法线方向移动一点距离，构造BoundingBox

@@ -87,7 +87,7 @@ namespace Metropolis::Intersection
         auto res  = d * (hitPoint - position);
         auto u = res.x, v = res.y;
         if ((u<=1 && u>=0) && (v<=1 && v>=0)) {
-            return getHitRecord(t, hitPoint, normal, {}, -3 );
+            return getHitRecord(t, hitPoint, glm::normalize(normal), {}, -3 );
         }
         return getMissRecord();
     }

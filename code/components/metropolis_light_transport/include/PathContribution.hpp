@@ -4,7 +4,7 @@
 
 #include "Metropolis.hpp"
 
-#define PI ((float)3.1415926535898)
+#define PI ((double)3.1415926535898)
 #define MAX(x, y) ((x > y) ? x : y)
 #define MIN(x, y) ((x < y) ? x : y)
 
