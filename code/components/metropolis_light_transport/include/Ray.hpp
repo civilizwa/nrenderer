@@ -7,6 +7,7 @@
 #include <limits>
 
 #define FLOAT_INF numeric_limits<float>::infinity()
+#define DOUBLE_INF numeric_limits<double>::infinity()
 namespace Metropolis
 {
     using namespace NRenderer;

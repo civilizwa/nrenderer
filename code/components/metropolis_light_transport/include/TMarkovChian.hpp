@@ -8,7 +8,7 @@ namespace Metropolis
 {
 	struct TMarkovChain
 	{
-		double u[NumStates];
+		double u[NumStates]; // 一条MarkovChain中放随机数的数组
 		PathContribution C;
 
 		// xorshift PRNG，生成[0, 1) double

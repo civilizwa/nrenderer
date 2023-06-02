@@ -21,22 +21,26 @@ namespace Metropolis {
         for (int i = 0; i < N_Init; i++) {
 
             InitRandomNumbers();
-            Path eyePath = GenerateEyePath(MaxEvents);
-            Path lightPath = GenerateLightPath(MaxEvents);
-            PathContribution pc = CombinePaths(eyePath, lightPath);
-            b += pc.sc;
-            if (eyePath.n + lightPath.n <= 10) {
-                invalid++;
-            }
-            //if (pc.sc == FLOAT_INF) {
-            //    cout << "i = " << i << ", sumN = " << eyePath.n + lightPath.n << ", sc = " << pc.sc << endl;
+            double sc = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents)).sc; // 我需要解决在这里面出现nan的问题
+            //cout << "i = " << i << ", sc = " << sc << endl;
+            b += sc;
+
+            //Path eyePath = GenerateEyePath(MaxEvents);
+            //Path lightPath = GenerateLightPath(MaxEvents);
+            //PathContribution pc = CombinePaths(eyePath, lightPath);
+            //b += pc.sc;
+            //if (eyePath.n + lightPath.n <= 10) {
+            //    invalid++;
+            //}
+            // cout << "i = " << i << ", sumN = " << eyePath.n + lightPath.n << ", sc = " << pc.sc << endl;            
+            //if (abs(pc.sc) == DOUBLE_INF) {
+            //    cout << "error" << endl;
+            //    return;
             //}
         }
 
         b /= double(N_Init);
-        cout << "b = " << b << ", invalid = " << invalid << endl; // b = 0.128411, invalid = 47
-
-
+        cout << "b = " << b << ", invalid = " << invalid << endl; // b = 0.136614, invalid = 47
 
         // initialize the Markov chain
         TMarkovChain current, proposal;
@@ -60,6 +64,15 @@ namespace Metropolis {
             }
             InitRandomNumbersByChain(proposal);
             proposal.C = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents));
+
+            //for (int i = 0; i < current.C.n; i++) {
+            //    cout << "i = " << i << ", current.C.c[i].color = " << current.C.c[i].c << endl;
+            //}
+            //cout << endl << endl;
+            //for (int i = 0; i < proposal.C.n; i++) {
+            //    cout << "i = " << i << ", proposal.C.c[i].color = " << proposal.C.c[i].c << endl;
+            //}
+            //cout << endl << endl;
 
             double a = 1.0; // 接受proposal的概率
             if (current.C.sc > 0.0)
@@ -106,6 +119,12 @@ namespace Metropolis {
         //}
         getServer().logger.log("Done...");
 
+        for (int ix = 0; ix < width; ix = ix + 10) {
+            for (int iy = 0; iy < height; iy = iy + 10) {
+                cout << "ix = " << ix << ", iy = " << iy << ", color = " << pixels[(height - iy - 1) * width + ix] << endl;
+            }
+        }
+
         return { pixels, width, height };
     }
 
@@ -116,7 +135,7 @@ namespace Metropolis {
 
     HitRecord MetropolisRenderer::closestHitObject(const Ray& r) {
         HitRecord closestHit = nullopt;
-        double closest = FLOAT_INF;
+        double closest = DOUBLE_INF;
 
         // BVH
         auto hitRecord = tree->Intersect(r, closest);
@@ -128,9 +147,9 @@ namespace Metropolis {
         return closestHit;
     }
 
-    tuple<double, Vec3, HitRecord> MetropolisRenderer::closestHitLight(const Ray& r) {
-        Vec3 v = {};
-        HitRecord closest = getHitRecord(FLOAT_INF, {}, {}, {}, {});
+    tuple<double, Vec3d, HitRecord> MetropolisRenderer::closestHitLight(const Ray& r) {
+        Vec3d v = {};
+        HitRecord closest = getHitRecord(DOUBLE_INF, {}, {}, {}, {});
         for (auto& a : scene.areaLightBuffer) {
             auto hitRecord = Intersection::xAreaLight(r, a, 0.000001, closest->t);
             if (hitRecord && closest->t > hitRecord->t) {
@@ -162,8 +181,9 @@ namespace Metropolis {
             //auto emitted = scattered.emitted;
 
             // 把相交点信息添加进path
-            Vec3 p = hitObject->hitPoint, n = hitObject->normal;
-            n = glm::dot(n, r.direction) < 0 ? n : n * -1.0f; // 让n与r方向相反
+            Vec3d p = hitObject->hitPoint, n = hitObject->normal;
+            Vec3d dir = { r.direction.x, r.direction.y, r.direction.z };
+            n = glm::dot(n, dir) < 0 ? n : n * -1.0; // 让n与r方向相反
             path.x[path.n] = Vert(p, n, hitObject->id);
             path.n++;
             const double rnd0 = prnds[(currDepth - 1) * NumRNGsPerEvent + 0 + PathRndsOffset];
@@ -181,7 +201,7 @@ namespace Metropolis {
             //double pdf = scattered.pdf;
 
         }
-        else if (t != FLOAT_INF) {
+        else if (t != DOUBLE_INF) {
             // cout << "int trace(), hit the light source." << endl;
             path.x[path.n] = Vert(hitLight->hitPoint, hitLight->normal, light_id);
             path.n++;
@@ -189,19 +209,19 @@ namespace Metropolis {
     }
 
     // 沿单位球面分布的向量
-    Vec3 MetropolisRenderer::VecRandom(const double rnd1, const double rnd2)
+    Vec3d MetropolisRenderer::VecRandom(const double rnd1, const double rnd2)
     {
         const double temp1 = 2.0 * PI * rnd1, temp2 = 2.0 * rnd2 - 1.0;				// temp1 in [0, 2pi), temp2 in [-1, 1)
         const double s = sin(temp1), c = cos(temp1), t = sqrt(1.0 - temp2 * temp2); // s, c确定两个方位角，t确定维度
-        return Vec3(s * t, temp2, c * t);
+        return Vec3d(s * t, temp2, c * t);
     }
 
-    Vec3 MetropolisRenderer::VecCosine(const Vec3 n, const double g, const double rnd1, const double rnd2)
+    Vec3d MetropolisRenderer::VecCosine(const Vec3d n, const double g, const double rnd1, const double rnd2)
     {
         // g->inf, temp2->1-, t->0+, 余弦分布就越均匀；反之g = 1，则余弦分布越容易得到法线方向
         const double temp1 = 2.0 * PI * rnd1, temp2 = pow(rnd2, 1.0 / (g + 1.0));
         const double s = sin(temp1), c = cos(temp1), t = sqrt(1.0 - temp2 * temp2);
-        Vec3 base = Vec3(s * t, temp2, c * t);
+        Vec3d base = Vec3d(s * t, temp2, c * t);
         return onb(base, n);
     }
 

@@ -76,6 +76,12 @@ namespace AccPathTracer
         }
         cout << "threadNum = " << taskNums << ", closestHitObject time per thread with BVH: " << total_ms / taskNums / 1000.0 << "s." << endl;
 
+        //for (int ix = 0; ix < width; ix = ix + 10) {
+        //    for (int iy = 0; iy < height; iy = iy + 10) {
+        //        cout << "ix = " << ix << ", iy = " << iy << ", color = " << pixels[(height - iy - 1) * width + ix] << endl;
+        //    }
+        //}
+
         return { pixels, width, height };
     }
 

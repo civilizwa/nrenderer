@@ -31,10 +31,10 @@ namespace Metropolis
 	// path data
 	struct Vert
 	{
-		Vec3 p, n;
+		Vec3d p, n;
 		int id;
 		Vert() {};
-		Vert(Vec3 p_, Vec3 n_, int id_) : p(p_), n(n_), id(id_) {}
+		Vert(Vec3d p_, Vec3d n_, int id_) : p(p_), n(n_), id(id_) {}
 	};
 	struct Path
 	{
@@ -45,9 +45,9 @@ namespace Metropolis
 	struct Contribution
 	{
 		double x, y;
-		Vec3 c; // 颜色
+		Vec3d c; // 颜色
 		Contribution() {};
-		Contribution(double x_, double y_, Vec3 c_) : x(x_), y(y_), c(c_) {}
+		Contribution(double x_, double y_, Vec3d c_) : x(x_), y(y_), c(c_) {}
 	};
 	struct PathContribution
 	{
