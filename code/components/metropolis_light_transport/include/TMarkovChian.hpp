@@ -11,7 +11,7 @@ namespace Metropolis
 		double u[NumStates];
 		PathContribution C;
 
-		// xorshift PRNG，生成[0, 1) float
+		// xorshift PRNG，生成[0, 1) double
 		inline double rnd() {
 			static unsigned int x = 123456789, y = 362436069, z = 521288629, w = 88675123;
 			unsigned int t = x ^ (x << 11);

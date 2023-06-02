@@ -31,7 +31,7 @@ namespace Metropolis
     private:
         unsigned long mutations = 10;
         int PathRndsOffset = 0;
-        float prnds[NumStates];
+        double prnds[NumStates];
 
         SharedScene spScene;
         Scene& scene;
@@ -75,16 +75,16 @@ namespace Metropolis
         void getBox();
 
         // 用两个随机数 in [0, 1)^2 生成一个终点在半球面上的向量
-        Vec3 VecRandom(const float rnd1, const float rnd2);
+        Vec3 VecRandom(const double rnd1, const double rnd2);
 
         // 构造一个按余弦分布的随机方向，更倾向于与法线接近的方向
-        Vec3 VecCosine(const Vec3 n, const float g, const float rnd1, const float rnd2);
+        Vec3 VecCosine(const Vec3 n, const double g, const double rnd1, const double rnd2);
 
-        // 将float映射到[0, 255]，并进行了gamma校正
-        int toInt(float x) { return int(pow(1 - exp(-x), 1 / 2.2) * 255 + .5); }
+        // 将double映射到[0, 255]，并进行了gamma校正
+        int toInt(double x) { return int(pow(1 - exp(-x), 1 / 2.2) * 255 + .5); }
 
-        // xorshift PRNG，生成[0, 1) float
-        inline float rnd() {
+        // xorshift PRNG，生成[0, 1) double
+        inline double rnd() {
             static unsigned int x = 123456789, y = 362436069, z = 521288629, w = 88675123;
             unsigned int t = x ^ (x << 11);
             x = y;
@@ -94,10 +94,10 @@ namespace Metropolis
         }
 
         // 根据s1, s2扰动value
-        inline float perturb(const float value, const float s1, const float s2)
+        inline double perturb(const double value, const double s1, const double s2)
         {
-            float Result;
-            float r = rnd();
+            double Result;
+            double r = rnd();
             if (r < 0.5)
             {
                 r = r * 2.0;
@@ -131,8 +131,8 @@ namespace Metropolis
             Result.C = MC.C;
 
             // pixel location
-            Result.u[0] = perturb(MC.u[0], 2.0 / float(width + height), 0.1);
-            Result.u[1] = perturb(MC.u[1], 2.0 / float(width + height), 0.1);
+            Result.u[0] = perturb(MC.u[0], 2.0 / double(width + height), 0.1);
+            Result.u[1] = perturb(MC.u[1], 2.0 / double(width + height), 0.1);
 
             // the rest
             for (int i = 2; i < NumStates; i++)
@@ -152,65 +152,58 @@ namespace Metropolis
         }
 
         // local sampling PDFs and standard terms
-        inline float GeometryTerm(const Vert e0, const Vert e1)
+        inline double GeometryTerm(const Vert e0, const Vert e1)
         {
             const Vec3 dv = e1.p - e0.p;
-            const float d2 = glm::dot(dv, dv);
+            const double d2 = glm::dot(dv, dv);
             return fabs(glm::dot(e0.n, dv) * glm::dot(e0.n, dv)) / (d2 * d2);
         }
-        inline float DirectionToArea(const Vert current, const Vert next)
+        inline double DirectionToArea(const Vert current, const Vert next)
         {
             const Vec3 dv = next.p - current.p;
-            const float d2 = glm::dot(dv, dv);
+            const double d2 = glm::dot(dv, dv);
             return fabs(glm::dot(next.n, dv)) / (d2 * sqrt(d2));
         }
-        inline float GlossyBRDF(const Vec3 wi, const Vec3 n, const Vec3 wo)
+        inline double GlossyBRDF(const Vec3 wi, const Vec3 n, const Vec3 wo)
         {
-            const float won = glm::dot(wo, n);
-            const float win = glm::dot(wi, n);
+            const double won = glm::dot(wo, n);
+            const double win = glm::dot(wi, n);
             const Vec3 r = Reflect(-wi, n);
             return (Glossiness + 2.0) / (2.0 * PI) * pow(MAX(glm::dot(r, wo), 0.0), Glossiness) / MAX(fabs(win), fabs(won));
         }
-        inline float GlossyPDF(const Vec3 wi, const Vec3 n, const Vec3 wo)
+        inline double GlossyPDF(const Vec3 wi, const Vec3 n, const Vec3 wo)
         {
             const Vec3 r = Reflect(-wi, n);
             return (Glossiness + 1.0) / (2.0 * PI) * pow(MAX(glm::dot(r, wo), 0.0), Glossiness);
         }
-        inline float LambertianBRDF(const Vec3 wi, const Vec3 n, const Vec3 wo)
+        inline double LambertianBRDF(const Vec3 wi, const Vec3 n, const Vec3 wo)
         {
 	        return 1.0 / PI;
         }
-        inline float LambertianPDF(const Vec3 wi, const Vec3 n, const Vec3 wo)
+        inline double LambertianPDF(const Vec3 wi, const Vec3 n, const Vec3 wo)
         {
 	        return fabs(glm::dot(wo, n)) / PI;
         }
 
-        // W：我用了一种更简单的方法去判断某物体的类型是不是光源，你在此文件中搜索light_id就能找到了
-        ////该函数由gpt生成
-        //bool pointInAreaLight(const AreaLight& a, const Vec3& point, const float tMin, const float tMax) {
-        //    Vec3 normal = glm::cross(a.u, a.v);
-        //    Vec3 position = a.position;
-        //    auto Np_dot_d = glm::dot(normal, point - position);
-        //    if (Np_dot_d < 0.0000001f && Np_dot_d > -0.00000001f) {
-        //        return false;
-        //    }
-        //    float dp = -glm::dot(position, normal);
-        //    float t = (-dp - glm::dot(normal, point - position)) / Np_dot_d;
-        //    if (t >= tMax || t < tMin) {
-        //        return false;
-        //    }
-        //    // cross test    
-        //    Vec3 hitPoint = point;
-        //    Mat3x3 d{ a.u, a.v, glm::cross(a.u, a.v) };
-        //    d = glm::inverse(d);
-        //    auto res = d * (hitPoint - position);
-        //    auto u = res.x, v = res.y;
-        //    if ((u <= 1 && u >= 0) && (v <= 1 && v >= 0)) {
-        //        return true;
-        //    }
-        //    return false;
-        //}
-        // 
+        // 返回当前向量在与给定法线向量构建的正交规范化基下的坐标表示
+        inline Vec3 onb(const Vec3& base, const Vec3& n) const
+        {
+            // 用n计算出一组正交基向量u, w, v, 返回调用向量在这组正交基下的坐标
+            Vec3 u, w, v = n;
+            if (n.z < -0.9999999)
+            {
+                u = Vec3(0.0, -1.0, 0.0);
+                w = Vec3(-1.0, 0.0, 0.0);
+            }
+            else
+            {
+                const double a = 1.0 / (1.0 + n.z);
+                const double b = -n.x * n.y * a;
+                u = Vec3(1.0 - n.x * n.x * a, b, -n.x);
+                w = Vec3(b, 1.0 - n.y * n.y * a, -n.y);
+            }
+            return Vec3(glm::dot(base, Vec3(u.x, v.x, w.x)), glm::dot(base, Vec3(u.y, v.y, w.y)), glm::dot(base, Vec3(u.z, v.z, w.z)));
+        }
   
         // 获取Path Xb上第i个Vert的color
         Vec3 getColor(const Path& Xb, int i) {
@@ -218,6 +211,10 @@ namespace Metropolis
             int color_index = -1;
             Vec3 color{ 0 };
             int id = Xb.x[i].id;
+            if (id == -3) {
+                return Vec3{ 47.8384, 38.5664, 31.0808 };
+            }
+
             auto node = scene.nodes[id];
             if (node.type == Node::Type::SPHERE) {
                 color_index = scene.sphereBuffer[node.entity].material.index();
@@ -251,15 +248,15 @@ namespace Metropolis
                 // 第一个点，camera
                 if (i == 0)
                 {
-                    float W = 1.0 / float(width * height); // 每个pixel的weight
+                    double W = 1.0 / double(width * height); // 每个pixel的weight
                     Vec3 d0 = Xb.x[1].p - Xb.x[0].p; // camera指向第一个反射点
-                    const float dist2 = glm::dot(d0, d0); // camera到第一个反射点的距离平方
-                    d0 = d0 * (1.0f / sqrt(dist2)); // d0成了一个单位向量
-                    const float c = glm::dot(d0, -camera.w); // d0的z分量
-                    float dist = height / (2.0 * camera.halfHeight); // camera到中心平面的垂线距离
-                    const float ds2 = (dist / c) * (dist / c); // camera到中心平面的d0方向距离
+                    const double dist2 = glm::dot(d0, d0); // camera到第一个反射点的距离平方
+                    d0 = d0 * (float)(1.0f / sqrt(dist2)); // d0成了一个单位向量
+                    const double c = glm::dot(d0, -camera.w); // d0的z分量
+                    double dist = height / (2.0 * camera.halfHeight); // camera到中心平面的垂线距离
+                    const double ds2 = (dist / c) * (dist / c); // camera到中心平面的d0方向距离
                     W = W / (c / ds2);
-                    f = f * (W * fabs(glm::dot(d0, Xb.x[1].n) / dist2));
+                    f = f * (float)(W * fabs(glm::dot(d0, Xb.x[1].n) / dist2));
                 }
                 // 最后一个点，light source
                 else if (i == (Xb.n - 1))
@@ -267,11 +264,11 @@ namespace Metropolis
                     if (Xb.x[i].id == light_id) // 这样写应该可以吧，判断一个点的reflect类型是不是光源的方法就是去看它的id
                     {
                         const Vec3 d0 = glm::normalize((Xb.x[i - 1].p - Xb.x[i].p));
-                        const float L = LambertianBRDF(d0, Xb.x[i].n, d0);
+                        const double L = LambertianBRDF(d0, Xb.x[i].n, d0);
 
                         // 光源的color，直接从.scn文件里找
                         Vec3 color = { 47.8384, 38.5664, 31.0808 };
-                        f = f * (color * L);
+                        f = f * (color * (float)L);
                     }
                     else
                     {
@@ -283,19 +280,19 @@ namespace Metropolis
                 {
                     const Vec3 d0 = glm::normalize((Xb.x[i - 1].p - Xb.x[i].p));
                     const Vec3 d1 = glm::normalize((Xb.x[i + 1].p - Xb.x[i].p));
-                    float BRDF = 0.0;
+                    double BRDF = 0.0;
                     BRDF = LambertianBRDF(d0, Xb.x[i].n, d1);
                     Vec3 color = getColor(Xb, i);
-                    f = f * (color * BRDF * GeometryTerm(Xb.x[i], Xb.x[i + 1]));
+                    f = f * (color * (float)BRDF * (float)GeometryTerm(Xb.x[i], Xb.x[i + 1]));
                 }
-                if (Max(f) == 0.0)
-                    return f;
+                if (Max(f) <= 0)
+                    return Vec3{ 0, 0, 0 };
             }
             return f;
         }
 
         // check if the path can be connected or not (visibility term)
-        bool isConnectable(const Path Xeye, const Path Xlight, float& px, float& py)
+        bool isConnectable(const Path Xeye, const Path Xlight, double& px, double& py)
         {
             // TODO
             Vec3 Direction;
@@ -335,9 +332,9 @@ namespace Metropolis
 
             // get the pixel location 得到新光路的Direction在image plane上的位置(px, py)，检查(px, py)是否在image内
             // TODO 这一部分的计算还是好复杂...但我觉得我现在的理解是对的
-            float dist = height / (2.0 * camera.halfHeight);
-            Vec3 ScreenCenter = camera.position + (-camera.w * dist); // 屏幕中心，(0, 0, 683.8694)
-            Vec3 ScreenPosition = camera.position + (Direction * (dist / glm::dot(Direction, -camera.w))) - ScreenCenter; // 新光路与image plane(z = 0)的交点
+            double dist = height / (2.0 * camera.halfHeight);
+            Vec3 ScreenCenter = camera.position + (-camera.w * (float)dist); // 屏幕中心，(0, 0, 683.8694)
+            Vec3 ScreenPosition = camera.position + (Direction * (float)(dist / glm::dot(Direction, -camera.w))) - ScreenCenter; // 新光路与image plane(z = 0)的交点
             px = glm::dot(-camera.u, ScreenPosition) + (width * 0.5);
             py = glm::dot(-camera.v, ScreenPosition) + (height * 0.5);
             return Result && ((px >= 0) && (px < width) && (py >= 0) && (py < height));
@@ -345,17 +342,17 @@ namespace Metropolis
 
         // path probability density
         // - take the sum of all possible probability densities if the numbers of subpath vertices are not specified
-        float PathProbablityDensity(const Path SampledPath, const int PathLength, const int SpecifiedNumEyeVertices = -1, const int SpecifiedNumLightVertices = -1)
+        double PathProbablityDensity(const Path SampledPath, const int PathLength, const int SpecifiedNumEyeVertices = -1, const int SpecifiedNumLightVertices = -1)
         {
             TKahanAdder SumPDFs(0.0);
             bool Specified = (SpecifiedNumEyeVertices != -1) && (SpecifiedNumLightVertices != -1); // 指定了两个子路径上的顶点数量
 
-            float dist = height / (2.0 * camera.halfHeight);
+            double dist = height / (2.0 * camera.halfHeight);
             // number of eye subpath vertices
             for (int NumEyeVertices = 0; NumEyeVertices <= PathLength + 1; NumEyeVertices++)
             {
                 // extended BPT
-                float p = 1.0;
+                double p = 1.0;
 
                 // number of light subpath vertices
                 int NumLightVertices = (PathLength + 1) - NumEyeVertices;
@@ -378,10 +375,10 @@ namespace Metropolis
                     }
                     else if (i == 0)
                     {
-                        p = p * 1.0 / float(width * height);
+                        p = p * 1.0 / double(width * height);
                         Vec3 Direction0 = glm::normalize(SampledPath.x[1].p - SampledPath.x[0].p);
-                        float CosTheta = glm::dot(Direction0, -camera.w);
-                        float DistanceToScreen2 = dist / CosTheta;
+                        double CosTheta = glm::dot(Direction0, -camera.w);
+                        double DistanceToScreen2 = dist / CosTheta;
                         DistanceToScreen2 = DistanceToScreen2 * DistanceToScreen2;
                         p = p / (CosTheta / DistanceToScreen2);
 
@@ -397,7 +394,7 @@ namespace Metropolis
                     }
                 }
 
-                if (p != 0.0)
+                if (p != 0)
                 {
                     // sampling from the light source
                     for (int i = -1; i <= NumLightVertices - 2; i++)
@@ -405,7 +402,7 @@ namespace Metropolis
                         if (i == -1)
                         {
                             // PDF of sampling the light position (assume area-based sampling)
-                            float lightArea = Max(scene.areaLightBuffer[0].u) * Max(scene.areaLightBuffer[0].v);
+                            double lightArea = abs(scene.areaLightBuffer[0].u.x * scene.areaLightBuffer[0].v.z);
                             p = p * (1.0 / lightArea);
                         }
                         else if (i == 0)
@@ -434,13 +431,13 @@ namespace Metropolis
             return SumPDFs.sum;
         }
 
-        Ray SampleLightSources(const float rnd1, const float rnd2)
+        Ray SampleLightSources(const double rnd1, const double rnd2)
         {
             // base1, base2是面光源的对角线上的两个点
             auto& areaLight = scene.areaLightBuffer[0];
             Vec3 base1 = areaLight.position + areaLight.u;
             Vec3 base2 = areaLight.position + areaLight.v;
-            float x_len = std::fabs(base1.x - base2.x), z_len = std::fabs(base1.z - base2.z); // 考虑到面光源与xz平面平行，就这么写了
+            double x_len = std::fabs(base1.x - base2.x), z_len = std::fabs(base1.z - base2.z); // 考虑到面光源与xz平面平行，就这么写了
             Vec3 p = Vec3{ min(base1.x, base2.x) + rnd1 * x_len, base1.y, min(base1.z, base2.z) + rnd2 * z_len };
 
             // 用沿单位球面分布的向量对y加绝对值取负得到沿单位半球（xz平面以下的半球）分布的向量
@@ -475,10 +472,14 @@ namespace Metropolis
             return Result;
         }
 
-        Ray SampleCamera(const float rnd1, const float rnd2)
+        Ray SampleCamera(const double rnd1, const double rnd2)
         {
-            // 不用写，应该可以用camera.shoot替代
-            return Ray{};
+            // 根据u, v, w的比例进行采样，可以确保采样方向能打到目标范围
+            const Vec3 su = camera.u * (float)-(0.5 - rnd1) * (float)width;
+            const Vec3 sv = camera.v * (float)(0.5 - rnd2) * (float)height;
+            double dist = height / (2.0 * camera.halfHeight); // camera到中心平面的垂线距离
+            const Vec3 sw = camera.w * (float)dist;
+            return Ray(camera.position, glm::normalize(su + sv + sw));
         }
         Path GenerateEyePath(const int MaxEyeEvents)
         {
@@ -494,7 +495,8 @@ namespace Metropolis
             PathRndsOffset = 0;
 
             // 从camera采样一束光线
-            Ray r = camera.shoot(prnds[PathRndsOffset + 0], prnds[PathRndsOffset + 1]); // 这里应该可以用这个函数替代SampleCamera()吧
+            Ray r = camera.shoot(prnds[PathRndsOffset + 0], prnds[PathRndsOffset + 1]); // 这里应该可以用这个函数替代SampleCamera()吧--得到的b更大
+            // Ray r = SampleCamera(prnds[PathRndsOffset + 0], prnds[PathRndsOffset + 1]);
             PathRndsOffset += NumRNGsPerEvent;
 
             // Result第一个点放camera信息
@@ -507,10 +509,10 @@ namespace Metropolis
         }
 
         // balance heuristic
-        float MISWeight(const Path SampledPath, const int NumEyeVertices, const int NumLightVertices, const int PathLength)
+        double MISWeight(const Path SampledPath, const int NumEyeVertices, const int NumLightVertices, const int PathLength)
         {
-            const float p_i = PathProbablityDensity(SampledPath, PathLength, NumEyeVertices, NumLightVertices);
-            const float p_all = PathProbablityDensity(SampledPath, PathLength);
+            const double p_i = PathProbablityDensity(SampledPath, PathLength, NumEyeVertices, NumLightVertices);
+            const double p_all = PathProbablityDensity(SampledPath, PathLength);
             if ((p_i == 0.0) || (p_all == 0.0))
             {
                 return 0.0;
@@ -525,7 +527,7 @@ namespace Metropolis
         // - limit the connection to a specific technique if s and t are provided
         PathContribution CombinePaths(const Path EyePath, const Path LightPath, const int SpecifiedNumEyeVertices = -1, const int SpecifiedNumLightVertices = -1)
         {
-            // TODO 是一个很重要但是很复杂的函数...
+            // TODO 此函数做的事情是：在EyePath中找前缀在LightPath中找后缀，组合成新路径，使得要返回的新路径Result的scalar contribution最大
             PathContribution Result;
             Result.n = 0;
             Result.sc = 0.0;
@@ -550,7 +552,7 @@ namespace Metropolis
                     Lightsubpath.n = NumLightVertices;
 
                     // check the path visibility
-                    float px = -1.0, py = -1.0;
+                    double px = -1.0, py = -1.0;
                     if (!isConnectable(Eyesubpath, Lightsubpath, px, py))
                         continue;
 
@@ -564,13 +566,13 @@ namespace Metropolis
 
                     // evaluate the path
                     Vec3 f = PathThroughput(SampledPath);
-                    float p = PathProbablityDensity(SampledPath, PathLength, NumEyeVertices, NumLightVertices);
-                    float w = MISWeight(SampledPath, NumEyeVertices, NumLightVertices, PathLength);
+                    double p = PathProbablityDensity(SampledPath, PathLength, NumEyeVertices, NumLightVertices);
+                    double w = MISWeight(SampledPath, NumEyeVertices, NumLightVertices, PathLength);
                     if ((w <= 0.0) || (p <= 0.0))
                         continue;
 
-                    Vec3 c = f * (w / p);
-                    if (Max(c) <= 0.0)
+                    Vec3 c = f * (float)(w / p);
+                    if (Max(c) <= 0.0 || Max(c) == FLOAT_INF)
                         continue;
 
                     // store the pixel contribution
@@ -579,13 +581,16 @@ namespace Metropolis
 
                     // scalar contribution function
                     Result.sc = MAX(Max(c), Result.sc);
+                    if (Result.sc == FLOAT_INF) {
+                        cout << "PathLength = " << PathLength << ", NumEyeVertices = " << NumEyeVertices << ", NumLightVertices = " << NumLightVertices << ", f = " << f << ", p = " << p << ", w = " << w << ", c = " << c << endl;
+                    }
                 }
             }
 
             return Result;
         }
 
-        void AccumulatePathContribution(RGBA* pixels, const PathContribution pc, const float mScaling)
+        void AccumulatePathContribution(RGBA* pixels, const PathContribution pc, const double mScaling)
         {
             // TODO
             if (pc.sc == 0)
@@ -593,7 +598,7 @@ namespace Metropolis
             for (int i = 0; i < pc.n; i++)
             {
                 const int ix = int(pc.c[i].x), iy = int(pc.c[i].y); // 通过顶点找到其贡献的照片的像素位置
-                Vec3 c = pc.c[i].c * mScaling;
+                Vec3 c = pc.c[i].c * (float)mScaling;
                 if ((ix < 0) || (ix >= width) || (iy < 0) || (iy >= height))
                     continue;
                 pixels[ix + iy * width] += Vec4{ c, 1 }; // TODO 不确定应该怎么写
@@ -607,7 +612,7 @@ namespace Metropolis
         RGB gamma(const RGB& rgb);
         void trace(Path &path, const Ray& ray, int currDepth);
         HitRecord closestHitObject(const Ray& r);
-        tuple<float, Vec3> closestHitLight(const Ray& r);
+        tuple<double, Vec3, HitRecord> closestHitLight(const Ray& r);
 
     };
 

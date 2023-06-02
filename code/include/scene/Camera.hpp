@@ -20,9 +20,9 @@ namespace NRenderer
         float focusDistance; // 焦距
         float aspect; // 屏幕宽高比
         Camera() noexcept
-            : position      (0.f, 0.f, -3.f)
+            : position      (0.f, 0.f, 10.f)
             , up            (0.f, 1.f, 0.f)
-            , lookAt        (0.f, 0.f, 0.f)
+            , lookAt        (0.f, 0.f, 1000.f)
             , fov           (40)
             , aperture      (0.f)
             , focusDistance (0.1f)

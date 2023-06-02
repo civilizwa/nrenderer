@@ -19,7 +19,7 @@ namespace NRenderer
         RenderSettings()
             : width             (500)
             , height            (500)
-            , depth             (4)
+            , depth             (20)
             , samplesPerPixel   (16)
             , roughness          (0)
             , F0                 (0.04)
