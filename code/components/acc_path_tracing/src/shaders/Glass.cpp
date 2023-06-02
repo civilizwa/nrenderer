@@ -25,7 +25,7 @@ namespace AccPathTracer
             ior_inverse = 1/ior;
         }
 
-        Vec3 reflex = glm::normalize(V + N);//反射光
+        Vec3 reflex = glm::normalize(V + N*2.f*glm::dot(-V,N));//反射光
         //计算基础反射率F0
         float n12 = (ior_inverse - 1.f) / (ior_inverse + 1.f);
         n12 = n12 * n12;

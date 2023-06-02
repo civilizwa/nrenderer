@@ -6,6 +6,7 @@
 #include "Lambertian.hpp"
 #include "Microfacet.hpp"
 #include "Glass.hpp"
+#include "Conductor.hpp"
 
 namespace AccPathTracer
 {
@@ -20,6 +21,9 @@ namespace AccPathTracer
                 {
                 case 0:
                     shader = make_shared<Lambertian>(material, t);
+                    break;
+                case 1:
+                    shader = make_shared<Conductor>(material, t);
                     break;
                 case 2:
                     shader = make_shared<Glass>(material, t);
