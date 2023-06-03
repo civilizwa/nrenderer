@@ -256,7 +256,7 @@ namespace Metropolis
                     double dist = height / (2.0 * camera.halfHeight); // camera到中心平面的垂线距离
                     const double ds2 = (dist / c) * (dist / c); // camera到中心平面的d0方向距离
                     W = W / (c / ds2);
-                    f = f * (W * fabs(glm::dot(d0, Xb.x[1].n) / dist2));
+                    f = f * (float)(W * fabs(glm::dot(d0, Xb.x[1].n) / dist2));
                 }
                 // 最后一个点，light source
                 else if (i == (Xb.n - 1))
