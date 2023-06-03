@@ -4,26 +4,34 @@
 #include "intersections/intersections.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
-const auto taskNums = 1;
+const auto taskNums = 8;
 Metropolis::Timer timers[taskNums]{};
 
 namespace Metropolis {
     RGB MetropolisRenderer::gamma(const RGB& rgb) {
         return glm::sqrt(rgb);
     }
+    
+    RGBA MetropolisRenderer::gamma(const RGBA& rgba) {
+        return glm::sqrt(rgba);
+    }
+
+    RGBA MetropolisRenderer::gamma(const RGBA& rgba, unsigned long samples) {
+        return Vec4{ pow(1 - exp(-rgba[0] * samples), 1 / 2.2), pow(1 - exp(-rgba[1] * samples), 1 / 2.2) ,
+            pow(1 - exp(-rgba[2] * samples), 1 / 2.2), 0};
+    }
+
 
     void MetropolisRenderer::renderTask(RGBA* pixels, int width, int height, int off, int step) {
-        unsigned long samps = 0; // 采样数
-
-        int invalid = 0;
         // estimate normalization constant b应该是用双向路径追踪计算照片最后的平均亮度
+
         double b = 0.0;
         for (int i = 0; i < N_Init; i++) {
-
             InitRandomNumbers();
-            double sc = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents)).sc; // 我需要解决在这里面出现nan的问题
-            //cout << "i = " << i << ", sc = " << sc << endl;
+            double sc = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents)).sc;
             b += sc;
+
+            // cout << "i = " << i << ", sc = " << sc << endl;
 
             //Path eyePath = GenerateEyePath(MaxEvents);
             //Path lightPath = GenerateLightPath(MaxEvents);
@@ -40,7 +48,7 @@ namespace Metropolis {
         }
 
         b /= double(N_Init);
-        cout << "b = " << b << ", invalid = " << invalid << endl; // b = 0.136614, invalid = 47
+        cout << "b = " << b << endl; // b = 0.136614, invalid = 47
 
         // initialize the Markov chain
         TMarkovChain current, proposal;
@@ -107,23 +115,31 @@ namespace Metropolis {
         VertexTransformer vertexTransformer{};
         vertexTransformer.exec(spScene);
 
-        renderTask(pixels, width, height, 0, 1);
+        //renderTask(pixels, width, height, 0, 1);
 
-        //thread t[taskNums];
-        //for (int i = 0; i < taskNums; i++) {
-        //    t[i] = thread(&MetropolisRenderer::renderTask,
-        //        this, pixels, width, height, i, taskNums);
-        //}
-        //for (int i = 0; i < taskNums; i++) {
-        //    t[i].join();
-        //}
+        thread t[taskNums];
+        for (int i = 0; i < taskNums; i++) {
+            t[i] = thread(&MetropolisRenderer::renderTask,
+                this, pixels, width, height, i, taskNums);
+        }
+        for (int i = 0; i < taskNums; i++) {
+            t[i].join();
+        }
+
+
+
+
         getServer().logger.log("Done...");
 
-        for (int ix = 0; ix < width; ix = ix + 10) {
-            for (int iy = 0; iy < height; iy = iy + 10) {
-                cout << "ix = " << ix << ", iy = " << iy << ", color = " << pixels[(height - iy - 1) * width + ix] << endl;
+        // 设置透明度以及gamma校正
+        cout << "samps = " << samps << endl;
+        for (int ix = 0; ix < spScene->renderOption.width; ix++) {
+            for (int iy = 0; iy < spScene->renderOption.height; iy++) {
+                gamma(pixels[ix + iy * width]) = gamma(pixels[ix + iy * width]);
+                pixels[ix + iy * width][3] = 1.0;
             }
         }
+            
 
         return { pixels, width, height };
     }

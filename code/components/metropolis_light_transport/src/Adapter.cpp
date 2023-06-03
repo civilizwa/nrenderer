@@ -15,7 +15,12 @@ namespace Metropolis
         void render(SharedScene spScene) {
             MetropolisRenderer renderer{ spScene };
             auto renderResult = renderer.render();
-            auto [pixels, width, height] = renderResult;
+            auto [pixels, width, height] = renderResult;          
+
+            for (int ix = 0; ix < spScene->renderOption.width; ix = ix + 10)
+                for (int iy = 0; iy < spScene->renderOption.height; iy = iy + 10)
+                    cout << pixels[ix + iy * width] << endl;
+                    
             getServer().screen.set(pixels, width, height);
             renderer.release(renderResult);
 

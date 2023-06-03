@@ -29,6 +29,7 @@ namespace NRenderer
 	using Vec2 = glm::vec2;
 	using Vec3 = glm::vec3;
 	using Vec4 = glm::vec4;
+	using Vec3d = glm::dvec3;
 
 	using Mat4x4 = glm::mat4x4;
 	using Mat3x3 = glm::mat3x3;
@@ -63,6 +64,9 @@ namespace NRenderer
 
 	inline std::ostream& operator << (std::ostream &out, const Vec3& v) {
 		return out<<"[ "<<v.x<<", "<<v.y<<", "<<v.z<<" ]";
+	}
+	inline std::ostream& operator << (std::ostream& out, const Vec3d& v) {
+		return out << "[ " << v.x << ", " << v.y << ", " << v.z << " ]";
 	}
 	inline std::ostream& operator << (std::ostream &out, const Vec4& v) {
 		return out<<"[ "<<v.x<<", "<<v.y<<", "<<v.z<<", "<<v.w<<" ]";
