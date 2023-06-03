@@ -10,9 +10,10 @@ namespace AccPathTracer
     {
     private:
         Vec3 albedo;
-        RenderOption renderoption;
+        float roughness;
+        float F0;//基础菲涅尔系数
     public:
-        Microfacet(Material& material, vector<Texture>& textures,RenderOption& renderopt);
+        Microfacet(Material& material, vector<Texture>& textures);
         Scattered shade(const Ray& ray, const Vec3& hitPoint, const Vec3& normal) const;
     };
 }

@@ -8,9 +8,6 @@ namespace NRenderer
         ro.samplesPerPixel = renderSettings.samplesPerPixel;
         ro.width = renderSettings.width;
         ro.height = renderSettings.height;
-        ro.roughness = renderSettings.roughness;
-        ro.metalness = renderSettings.metalness;
-        ro.shaderType = renderSettings.shadeType;
         this->scene->renderOption = ro;
     }
 
