@@ -132,7 +132,6 @@ namespace AccPathTracer
         //如果光源与交点之间有物体间隔，则计算的是间接光照
         if (hitObject && hitObject->t < t) {
             auto mtlHandle = hitObject->material;
-            if (spScene->renderOption.shaderType == 0) {
                 auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
                 if (spScene->materials[mtlHandle.index()].type == 0) {
                     auto scatteredRay = scattered.ray;
@@ -168,17 +167,12 @@ namespace AccPathTracer
                     auto next = trace(L, currDepth + 1, thread_id);
                     return attenuation * next;
                 }
-               
-            }
-            else if (spScene->renderOption.shaderType == 1) {
-                auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
-                auto scatteredRay = scattered.ray;
-                auto specular = scattered.attenuation;
-                auto diffuse = scattered.emitted;
-                //cout << "specular:" << specular << "  diffuse:" << diffuse << endl;
-                auto next= trace(scatteredRay, currDepth + 1, thread_id);
-                return (specular + diffuse) * next;
-            }
+                else if (spScene->materials[mtlHandle.index()].type == 3) {
+                    auto L = scattered.ray;
+                    auto attenuation = scattered.attenuation;
+                    auto next = trace(L, currDepth + 1, thread_id);
+                    return attenuation * next;
+                }
             
         }
         else if (t != FLOAT_INF) {//直接光照

@@ -17,18 +17,12 @@ namespace NRenderer
         unsigned int depth;
         unsigned int samplesPerPixel;
         unsigned int acc_type;
-        double roughness;
-        double metalness;
-        int shaderType;
         RenderOption()
             : width             (500)
             , height            (500)
             , depth             (4)
             , samplesPerPixel   (16)
             , acc_type          (1)
-            , roughness          (0)
-            , metalness          (0)
-            , shaderType          (0)
         {}
     };
 

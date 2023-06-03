@@ -42,9 +42,6 @@ namespace NRenderer
         ImGui::InputScalar("Height", ImGuiDataType_U32, &rs.height, &intStep, NULL, "%u");
         ImGui::InputScalar("Depth", ImGuiDataType_U32, &rs.depth, &intStep, NULL, "%u");
         ImGui::InputScalar("Sample Nums", ImGuiDataType_U32, &rs.samplesPerPixel, &intStep, NULL, "%u");
-        ImGui::InputScalar("ShadeType", ImGuiDataType_S32, &rs.shadeType, &intStep, NULL, "%u");
-        ImGui::InputScalar("Roughness", ImGuiDataType_Double, &rs.roughness, &intStep, NULL, "%u");
-        ImGui::InputScalar("metalness", ImGuiDataType_Double, &rs.metalness, &intStep, NULL, "%u");
     }
     void SceneView::ambientSetting() {
         auto& as = manager.renderSettingsManager.ambientSettings;

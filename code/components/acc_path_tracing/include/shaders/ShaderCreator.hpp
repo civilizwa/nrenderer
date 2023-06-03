@@ -15,30 +15,28 @@ namespace AccPathTracer
     public:
         ShaderCreator() = default;
         SharedShader create(Material& material, vector<Texture>& t, RenderOption& renderoption) {
-            SharedShader shader{nullptr};
-            if (renderoption.shaderType == 0) {
-                switch (material.type)
-                {
-                case 0:
-                    shader = make_shared<Lambertian>(material, t);
-                    break;
-                case 1:
-                    shader = make_shared<Conductor>(material, t);
-                    break;
-                case 2:
-                    shader = make_shared<Glass>(material, t);
-                    break;
-                default:
-                    shader = make_shared<Lambertian>(material, t);
-                    break;
-                }
+            SharedShader shader{ nullptr };
+
+            switch (material.type)
+            {
+            case 0:
+                shader = make_shared<Lambertian>(material, t);
+                break;
+            case 1:
+                shader = make_shared<Conductor>(material, t);
+                break;
+            case 2:
+                shader = make_shared<Glass>(material, t);
+                break;
+            case 3:
+                shader = make_shared<Microfacet>(material, t);//微表面
+                break;
+            default:
+                shader = make_shared<Lambertian>(material, t);
+                break;
             }
-            else if (renderoption.shaderType == 1) {
-                shader = make_shared<Microfacet>(material, t, renderoption);//微表面
-            }
-            
-            return shader;
-        }
+        return shader;
+    }
     };
 }
 

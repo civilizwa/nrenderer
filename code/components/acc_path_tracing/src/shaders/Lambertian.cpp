@@ -25,12 +25,11 @@ namespace AccPathTracer
         //albedo:颜色
         //attenuation：光线在传播过程中的衰减率
         auto attenuation = albedo / PI;
-
         return {
             Ray{origin, direction},//发出光线
             attenuation,
             Vec3{0},
-            pdf
+            pdf,
         };
     }
 }

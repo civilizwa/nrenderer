@@ -12,73 +12,99 @@ const float metalness = 0.2;
 const float roughness = 0.2;
 namespace AccPathTracer
 {
-    struct brdfData {
-        Vec3 specularF0;
-        Vec3 diffuseReflectance;
-        Vec3 base_color;
-        float alpha;        //< linear roughness - often 'alpha' in specular BRDF equations
-        float alphaSquared; //< alpha squared - pre-calculated value commonly used in BRDF equations
-        // Roughnesses
-        float roughness;    //< perceptively linear roughness (artist's input)
-        float metalness;
+    inline float SmithG1(const Vec3& v, const Vec3& h, const Vec3& n, float roughness) {
+        double cos_v_n = glm::dot(v, n);
+        if (cos_v_n * glm::dot(v, h) <= 0.0f)
+        {
+            return 0.f;
+        }
 
-        // Commonly used terms for BRDF evaluation
-        Vec3 F; //< Fresnel term
-
-        // Vectors
-        Vec3 V; //< Direction to viewer (or opposite direction of incident ray)
-        Vec3 N; //< Shading normal
-        Vec3 H; //< Half vector (microfacet normal)
-        Vec3 L; //< Direction to light (or direction of reflecting ray)
-
-        float NdotL;
-        float NdotV;
-
-        float LdotH;
-        float NdotH;
-        float VdotH;
-
-        // True when V/L is backfacing wrt. shading normal N
-        bool Vbackfacing;
-        bool Lbackfacing;
-    };
-    inline float saturate(float x) { return clamp(x, 0.0f, 1.0f); };
-
+        if (std::abs(cos_v_n - 1.0) < std::numeric_limits<double>::epsilon())
+        {
+            return 1.0f;
+        }
+        float cos_v_n_2 = pow(cos_v_n,2),
+            tan_v_n_2 = (1.0f - cos_v_n_2) / cos_v_n_2,
+            alpha_2 = roughness*roughness;
+        return 2.0f / (1.0f + std::sqrt(1.0f + alpha_2 * tan_v_n_2));
+    }
     inline Vec3 evalFresnel(Vec3 f0, float LdotH) {
-        return f0 + (Vec3{1.0f,1.0f,1.0f} - f0) * pow(1.0f - max(0.00001f,LdotH), 5.0f);
+        return f0 + (Vec3{1.0f,1.0f,1.0f} - f0) * (float)pow(1.0f - LdotH, 5);
     };
+    inline Vec3 FresnelConductor(const Vec3& wi, const Vec3& normal, const Vec3& eta_r, const Vec3& eta_i) {
+        float cos_theta_i = glm::dot(-wi, normal),
+            cos_theta_i_2 = cos_theta_i * cos_theta_i,
+            sin_theta_i_2 = 1.0f - cos_theta_i_2,
+            sin_theta_i_4 = sin_theta_i_2 * sin_theta_i_2;
 
-    inline float GGX_D(float alphaSquared, float NdotH) {
-        float b = ((alphaSquared - 1.0f) * NdotH * NdotH + 1.0f);
-        return alphaSquared / (PI * b * b);
-    };
+        Vec3 temp_1 = eta_r * eta_r - eta_i * eta_i - sin_theta_i_2,
+            a_2_pb_2 = temp_1 * temp_1 + 4.0f * eta_i * eta_i * eta_r * eta_r;
+        for (int i = 0; i < 3; i++)
+        {
+            a_2_pb_2[i] = std::sqrt(std::max(0.0f, a_2_pb_2[i]));
+        }
+        Vec3 a = 0.5f * (a_2_pb_2 + temp_1);
+        for (int i = 0; i < 3; i++)
+        {
+            a[i] = std::sqrt(std::max(0.0f, a[i]));
+        }
+        Vec3 term_1 = a_2_pb_2 + cos_theta_i_2,
+            term_2 = 2.0f * cos_theta_i * a,
+            term_3 = a_2_pb_2 * cos_theta_i_2 + sin_theta_i_4,
+            term_4 = term_2 * sin_theta_i_2,
+            r_s = (term_1 - term_2) / (term_1 + term_2),
+            r_p = r_s * (term_3 - term_4) / (term_3 + term_4);
+        return 0.5f * (r_s + r_p);
+    }
 
-    inline float Smith_G_a(float NdotS,float alpha) {
-        return NdotS / (max(0.00001f, alpha) * sqrt(1.0f - min(0.99999f, NdotS * NdotS)));
-    };
-
-    // Lambda function for Smith G term derived for GGX distribution
-    inline float Smith_G_Lambda(float a) {
-        return (-1.0f + sqrt(1.0f + (1.0f / (a * a)))) * 0.5f;
-    };
-
-    inline float Smith_G2(float alpha, float NdotL, float NdotV) {
-        float aL = Smith_G_a(NdotL,alpha);
-        //cout << "al:" << aL << endl;
-        float aV = Smith_G_a(NdotV,alpha);
-        //cout << "aV:" << aV << endl;
-        //return 1.0f / (1.0f + Smith_G_Lambda(aL) + Smith_G_Lambda(aV));
-        return aL * aV;
-    };
-
-    inline Vec3 evalMicrofacet(brdfData data) {
+    /*inline Vec3 evalMicrofacet(brdfData data) {
         float D = GGX_D(data.alphaSquared, data.NdotH);
         float G2 = Smith_G2(data.alpha, data.NdotL, data.NdotV);
 
         return data.F * (G2 * D * data.NdotL);
-    };
-
-    brdfData buildData(const Ray& ray, const Vec3& hitPoint, const Vec3& normal,RenderOption renderoption,Vec3 albedo, Vec3 direction) {
+    };*/
+    inline Vec2 Sampler(unsigned int seed) {
+        minstd_rand e_;
+        e_.seed(seed);
+        std::uniform_real_distribution<float> dist_ = std::uniform_real_distribution<float>(0.f, 1.f);
+        return Vec2{ dist_(e_),dist_(e_) };
+    }
+    inline void CoordinateSystem(const Vec3& up, Vec3& B, Vec3& C)
+    {
+        if (std::fabs(up.x) > std::fabs(up.y))
+        {
+            double len_inv = 1.0f / std::sqrt(up.x * up.x + up.z * up.z);
+            C = Vec3(up.z * len_inv, 0.f, -up.x * len_inv);
+        }
+        else
+        {
+            double len_inv = 1.0f / std::sqrt(up.y * up.y + up.z * up.z);
+            C = Vec3(0.f, up.z * len_inv, -up.y * len_inv);
+        }
+        B = glm::cross(C, up);
+    }
+    //将单位向量从局部坐标系转换到世界坐标系
+    inline Vec3 ToWorld(const Vec3& dir, const Vec3& up)
+    {
+        auto B = Vec3(0), C = Vec3(0);
+        CoordinateSystem(up, B, C);
+        return glm::normalize(dir.x * B + dir.y * C + dir.z * up);
+    }
+    inline void Sample(Vec3 n,float roughness, Vec3* H, float* pdf) {
+        float sin_phi = 0.0, cos_phi = 0.0, alpha_2 = 0.0;
+        Vec2 random_ = Sampler(6);
+        float phi = 2.0f * PI * random_.y;
+        cos_phi = std::cos(phi);
+        sin_phi = std::sin(phi);
+        alpha_2 = roughness*roughness;
+        float tan_theta_2 = alpha_2 * random_.x / (1.0f - random_.x),
+            cos_theta = 1.0 / std::sqrt(1.0f + tan_theta_2),
+            sin_theta = std::sqrt(1.0f - cos_theta * cos_theta);
+        *H = ToWorld({ sin_theta * cos_phi, sin_theta * sin_phi, cos_theta }, n);
+        *pdf =1.0f / static_cast<float>(PI * alpha_2 * std::pow(cos_theta, 3) * pow(1.0f + tan_theta_2 / alpha_2,2));;
+        return;
+    }
+    /*brdfData buildData(const Ray& ray, const Vec3& hitPoint, const Vec3& normal, RenderOption renderoption, Vec3 albedo, Vec3 direction) {
         brdfData data;
         //data.roughness = renderoption.roughness;
         //data.metalness = renderoption.metalness;
@@ -122,37 +148,78 @@ namespace AccPathTracer
         data.F = evalFresnel(data.specularF0, data.VdotH);
 
         return data;
-    }
-    Microfacet::Microfacet(Material& material, vector<Texture>& textures, RenderOption& renderopt)
+    }*/
+    Microfacet::Microfacet(Material& material, vector<Texture>& textures)
         : Shader(material, textures)
     {
-        auto diffuseColor = material.getProperty<Property::Wrapper::RGBType>("diffuseColor");
-        if (diffuseColor) albedo = (*diffuseColor).value;
-        else albedo = { 1, 1, 1 };
-        renderoption = renderopt;
+        auto albedo = material.getProperty<Property::Wrapper::RGBType>("albedo");
+        if (albedo) this->albedo = (*albedo).value;
+        else this->albedo = { 1, 1, 1 };
+
+        auto roughness= material.getProperty<Property::Wrapper::FloatType>("roughness");
+        if (roughness) this->roughness = (*roughness).value;
+        else this->roughness =0.2f;
+
+        auto F0 = material.getProperty<Property::Wrapper::FloatType>("F0");
+        if (F0) this->F0 = (*F0).value;
+        else this->F0 = 0.04;
+
     }
-    
+    inline Vec3 Reflect(const Vec3& wi, const Vec3& normal)
+    {
+        return glm::normalize(wi - 2.0f * glm::dot(wi, normal) * normal);
+    }
     Scattered Microfacet::shade(const Ray& ray, const Vec3& hitPoint, const Vec3& normal)const {
-        Vec3 origin = hitPoint;
-        Vec3 random = defaultSamplerInstance<HemiSphere>().sample3d();
+        Vec3 H = Vec3(0.f);
+        float D = 0.f;
+        //采样入射光与出射光的中间法向量
+        Vec3 N = glm::normalize(normal);
+        Sample(N, roughness, &H, &D);
+        H = glm::normalize(H);
+        Vec3 V = -ray.direction;
+        float pdf= D * std::abs(1.0f / (4.0f *glm::dot(ray.direction, H)));
+        //cout << "pdf:" << pdf << endl;
+        //令V H L同向
+        //if (glm::dot(V, H) < 0.f) { H = -H; }
+        Vec3 L = glm::normalize(Reflect(ray.direction, H));
+        //Vec3 L = glm::normalize(-V + 2.f * glm::dot(V, H) * H);
 
-        Onb onb{ normal };
-        Vec3 direction = glm::normalize(onb.local(random));
-        //cout<<"ditection:(" << direction.x << "," << direction.y << "," << direction.z << ")" << endl;
-        brdfData data=buildData(ray,hitPoint,normal,renderoption,albedo,direction);
+        float cos_theta_i = glm::dot(L, N); //入射光线方向和宏观表面法线方向夹角的余弦
+        //pdf=0或入射光从物体内部穿过或出射光从内部穿过
+        if (pdf == 0.f || glm::dot(ray.direction, normal) >= 0.f|| cos_theta_i <= 0.f) {
+            Scattered s;
+            s.pdf = 0.f;
+            s.attenuation = Vec3(0.f);
+            //cout << "cos_theta_i:" << cos_theta_i << endl;
+            //cout << "pdf:" << pdf << endl;
+            return s;
+        }
+        Vec3 specularF0 = (1.f - metalness) * Vec3{ F0, F0, F0 } + metalness * albedo;
+        //Vec3 F1=evalFresnel(specularF0, cos_theta_i);
+        Vec3 F = evalFresnel(specularF0, abs(glm::dot(L, H)));
+        //Vec3 eta_r = Vec3{ 0.15494, 0.11648, 0.13809 };
+        //Vec3 eta_i = Vec3{ 4.81810, 3.11562, 2.14240 };
+       // Vec3 F = FresnelConductor(-L, H, eta_r, eta_i);
+        //cout << "F:" <<F<< endl;
+        //cout << "F1:" << F1 << endl;
+        //cout << "F2:" << F2 << endl;
+        float cos_theta_o = abs(glm::dot(N, V));
+        float G = SmithG1(L,H,N,roughness)* SmithG1(V, H, N, roughness);//阴影-遮蔽项
+        //cout << "G:" << G << endl;
+        //cout << "D:" << D << endl;
+        
+        Vec3 attenuation =( F * G * D) / std::abs(4.0f* cos_theta_o);
+        attenuation = attenuation / pdf;
 
-        //if (Vbackfacing || Lbackfacing) return { Ray{origin,direction},Vec3{0},Vec3{0} }
-        //cout<<"F:"<< data.F.x << "," << data.F.y << "," << data.F.z << ")" << endl;
-
-        Vec3 specular = evalMicrofacet(data);
-        //Vec3 diffuse = (Vec3{ 1.0f, 1.0f, 1.0f } - data.F) * data.diffuseReflectance * data.NdotL / PI;
-        Vec3 diffuse = data.base_color;
-        float pdf = 1 / (2 * PI);
+        attenuation *= albedo;
+        
+        //cout << "attenuation:" << attenuation << endl;
+       
         return {
-            Ray{origin, direction},
-            diffuse,
-            specular,
-            pdf
+            Ray{hitPoint, L},
+            attenuation,
+            Vec3(0.f),
+            pdf,
         };
     }
 
