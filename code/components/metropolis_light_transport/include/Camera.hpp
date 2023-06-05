@@ -28,6 +28,7 @@ namespace Metropolis
         Vec3d lowerLeft; // 视平面左下角的位置
         Vec3d position; // 相机的位置
         double halfHeight;
+        double focusDis;
         // double dist = 0.0f; // 相机到成像平面的距离
 
         Camera(const NRenderer::Camera& camera)
@@ -45,17 +46,18 @@ namespace Metropolis
             u = glm::normalize(glm::cross(up, w));
             v = glm::cross(w, u);
 
-            double focusDis = camera.focusDistance; // 焦距
+            focusDis = camera.focusDistance; // 焦距
 
             lowerLeft = position - halfWidth*focusDis*u - halfHeight*focusDis*v - focusDis*w; // 相机位置减去成像平面左下角的位置
             horizontal = 2*halfWidth*focusDis*u;
             vertical = 2*halfHeight*focusDis*v;
-            // dist =  / (2.0 * tan((camera.fov / 2.0) * (PI / 180.0)));
-            
+            // 在focusDistance = 0.1的情况下
+            // cout << "lowerLeft = " << lowerLeft << ", horizontal = " << horizontal << ", vertical = " << vertical;
+            // lowerLeft = [0.036397, -0.036397, 10.1], horizontal = [-0.072794, 0, 0], vertical = [0, 0.072794, 0]
             
         }
 
-        // 从摄像机中发射光线
+        // 从摄像机中发射光线，s t是单位正方形内采样得到的
         Ray shoot(double s, double t) const {
             auto r = defaultSamplerInstance<UniformInCircle>().sample2d();
             double rx = r.x * lenRadius;
@@ -63,8 +65,9 @@ namespace Metropolis
             Vec3d offset = u*rx + v*ry;
             return Ray{
                 position + offset,
+                // 事实上focusDistance不会影响方向，因为它们三项都有因子focusDistance，normalize后是一样的
                 glm::normalize(
-                    lowerLeft + s*horizontal + t*vertical - position - offset
+                    lowerLeft + s*horizontal + t*vertical - (position + offset)
                 )
             };
         }

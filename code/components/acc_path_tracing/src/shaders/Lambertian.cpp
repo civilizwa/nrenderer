@@ -18,12 +18,12 @@ namespace AccPathTracer
         Vec3 random = defaultSamplerInstance<HemiSphere>().sample3d();
 
         Onb onb{normal};
-        Vec3 direction = glm::normalize(onb.local(random));
+        Vec3 direction = glm::normalize(onb.local(random)); // direction沿以normal方向为中心的半球均匀分布
 
         float pdf = 1/(2*PI);
 
-        //albedo:颜色
-        //attenuation：光线在传播过程中的衰减率
+        //albedo: 表面对不同颜色的反射率
+        //attenuation：光线在经过特定albedo后的衰减比例
         auto attenuation = albedo / PI;
         return {
             Ray{origin, direction},//发出光线

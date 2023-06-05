@@ -102,14 +102,14 @@ namespace Metropolis {
 		if (node->left == nullptr && node->right == nullptr) {
 
 			if (node->bound.type == Bounds3::Type::SPHERE) {
-				auto hitRecord = Intersection::xSphere(ray, *node->bound.sp, 0.000001, closest, node->bound.node_id);
+				auto hitRecord = Intersection::xSphere(ray, *node->bound.sp, 0.0001, closest, node->bound.node_id);
 				if (hitRecord && hitRecord->t < closest) {
 					closest = hitRecord->t;
 					closestHit = hitRecord;
 				}
 			}
 			else if (node->bound.type == Bounds3::Type::TRIANGLE) {
-				auto hitRecord = Intersection::xTriangle(ray, *node->bound.tr, 0.000001, closest, node->bound.node_id);
+				auto hitRecord = Intersection::xTriangle(ray, *node->bound.tr, 0.0001, closest, node->bound.node_id);
 				if (hitRecord && hitRecord->t < closest) {
 					closest = hitRecord->t;
 					closestHit = hitRecord;
@@ -117,7 +117,7 @@ namespace Metropolis {
 			}
 			// 如果给平面建立BoundingBox的话那这里也要加上平面
 			else if (node->bound.type == Bounds3::Type::PLANE) {
-				auto hitRecord = Intersection::xPlane(ray, *node->bound.pl, 0.000001, closest, node->bound.node_id);
+				auto hitRecord = Intersection::xPlane(ray, *node->bound.pl, 0.0001, closest, node->bound.node_id);
 				if (hitRecord && hitRecord->t < closest) {
 					closest = hitRecord->t;
 					closestHit = hitRecord;

@@ -17,6 +17,8 @@ namespace Metropolis
             : e               ((unsigned int)time(0) + insideSeed())
             , u               (-1, 1)
         {}
+
+        // 返回单位圆内的一个点
         Vec2 sample2d() override {
             float x{0}, y{0};
             do {

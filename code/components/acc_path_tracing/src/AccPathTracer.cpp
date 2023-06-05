@@ -26,7 +26,7 @@ namespace AccPathTracer
                     // 归一化
                     float x = (float(j) + rx) / float(width);
                     float y = (float(i) + ry) / float(height);
-                    auto ray = camera.shoot(x, y);
+                    auto ray = camera.shoot(x, y); // 每次朝每一个pixel (j, i)内部的一点(j + rx, i + ry)发射光线，发射samples次
                     color += trace(ray, 0, off);
                 }
                 color /= samples;
@@ -138,47 +138,47 @@ namespace AccPathTracer
         //如果光源与交点之间有物体间隔，则计算的是间接光照
         if (hitObject && hitObject->t < t) {
             auto mtlHandle = hitObject->material;
-                auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
-                if (spScene->materials[mtlHandle.index()].type == 0) {
-                    auto scatteredRay = scattered.ray;
-                    auto attenuation = scattered.attenuation;
-                    auto emitted = scattered.emitted;
-                    //由于漫反射发出的光线可言任意方向，因此这里用的是random随机选取的反射光线
-                    auto next = trace(scatteredRay, currDepth + 1, thread_id);
-                    float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);//cos(N法向量,L光源)
-                    float pdf = scattered.pdf;
-                    /**
-                     * emitted      - Le(p, w_0)
-                     * next         - Li(p, w_i)
-                     * n_dot_in     - cos<n, w_i>
-                     * atteunation  - BRDF
-                     * pdf          - p(w)
-                     **/
-                     //emitted:直接光照发出的强度
-                     //后部分是漫反射
-                    return emitted + attenuation * next * n_dot_in / pdf;
-                }
-                else if (spScene->materials[mtlHandle.index()].type == 2) {//玻璃
-                    auto reflex = scattered.data.reflex;
-                    auto reflex_rate = scattered.data.reflex_rate;
-                    auto refraction = scattered.data.refraction;
-                    auto refraction_rate = scattered.data.refraction_rate;
-                    auto reflex_emit = trace(reflex, currDepth + 1, thread_id);
-                    auto refraction_emit = reflex_rate==Vec3(0.f)?RGB(0.f):trace(refraction, currDepth + 1, thread_id);
-                    return reflex_emit*reflex_rate + refraction_emit * refraction_rate;
-                }
-                else if (spScene->materials[mtlHandle.index()].type == 1) {//光滑导体
-                    auto L = scattered.ray;
-                    auto attenuation = scattered.attenuation;
-                    auto next = trace(L, currDepth + 1, thread_id);
-                    return attenuation * next;
-                }
-                else if (spScene->materials[mtlHandle.index()].type == 3) {
-                    auto L = scattered.ray;
-                    auto attenuation = scattered.attenuation;
-                    auto next = trace(L, currDepth + 1, thread_id);
-                    return attenuation * next;
-                }
+            auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
+            if (spScene->materials[mtlHandle.index()].type == 0) {
+                auto scatteredRay = scattered.ray;
+                auto attenuation = scattered.attenuation;
+                auto emitted = scattered.emitted;
+                //由于漫反射发出的光线可言任意方向，因此这里用的是random随机选取的反射光线
+                auto next = trace(scatteredRay, currDepth + 1, thread_id);
+                float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);//cos(N法向量,L光源)
+                float pdf = scattered.pdf;
+                /**
+                    * emitted      - Le(p, w_0)
+                    * next         - Li(p, w_i)
+                    * n_dot_in     - cos<n, w_i>
+                    * atteunation  - BRDF
+                    * pdf          - p(w)
+                    **/
+                    //emitted:直接光照发出的强度
+                    //后部分是漫反射
+                return emitted + attenuation * next * n_dot_in / pdf;
+            }
+            else if (spScene->materials[mtlHandle.index()].type == 2) {//玻璃
+                auto reflex = scattered.data.reflex;
+                auto reflex_rate = scattered.data.reflex_rate;
+                auto refraction = scattered.data.refraction;
+                auto refraction_rate = scattered.data.refraction_rate;
+                auto reflex_emit = trace(reflex, currDepth + 1, thread_id);
+                auto refraction_emit = reflex_rate==Vec3(0.f)?RGB(0.f):trace(refraction, currDepth + 1, thread_id);
+                return reflex_emit*reflex_rate + refraction_emit * refraction_rate;
+            }
+            else if (spScene->materials[mtlHandle.index()].type == 1) {//光滑导体
+                auto L = scattered.ray;
+                auto attenuation = scattered.attenuation;
+                auto next = trace(L, currDepth + 1, thread_id);
+                return attenuation * next;
+            }
+            else if (spScene->materials[mtlHandle.index()].type == 3) {
+                auto L = scattered.ray;
+                auto attenuation = scattered.attenuation;
+                auto next = trace(L, currDepth + 1, thread_id);
+                return attenuation * next;
+            }
             
         }
         else if (t != FLOAT_INF) {//直接光照

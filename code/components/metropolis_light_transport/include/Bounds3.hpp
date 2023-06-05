@@ -127,7 +127,6 @@ namespace Metropolis {
 
     };
     inline bool Bounds3::IntersectP(const Ray& ray, const Vec3& invDir, const std::array<int, 3>& dirIsNeg = { 0, 0, 0 }) {
-        // 问题出在这个函数！！它认为与BoundingBox相交的几乎只有来自极狭小区域的光！！
         if (Inside(ray.origin, *this)) {
             return true;
         }
