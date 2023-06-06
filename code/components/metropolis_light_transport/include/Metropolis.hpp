@@ -28,10 +28,10 @@ namespace Metropolis
     class MetropolisRenderer
     {
     private:
-        unsigned long mutations = 1000000;
+        unsigned long mutations = 2000000;
         int PathRndsOffset = 0;
         double prnds[NumStates];
-        Vec3d emitted{ 47.8384 * 2.5, 38.5664 * 2.5, 31.0808 * 2.5 };
+        Vec3d emitted{ 47.8384 * 2.0, 38.5664 * 2.0, 31.0808 * 2.0 };
         double b = 0.0;
 
 
@@ -218,7 +218,7 @@ namespace Metropolis
             Vec3d color{ 0 };
             int id = Xb.x[i].id;
             if (id == -3) {
-                return emitted * 3.0;
+                return emitted;
 
             }
 

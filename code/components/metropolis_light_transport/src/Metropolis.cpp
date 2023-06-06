@@ -4,7 +4,7 @@
 #include "intersections/intersections.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
-const auto taskNums = 4;
+const auto taskNums = 8;
 std::mutex mtx;
 
 namespace Metropolis {
@@ -135,7 +135,7 @@ namespace Metropolis {
         for (int ix = 0; ix < spScene->renderOption.width; ix++) {
             for (int iy = 0; iy < spScene->renderOption.height; iy++) {
                 // 框架中的校正
-                // pixels[ix + iy * width] = gamma(pixels[ix + iy * width]);
+                // pixels[ix + iy * width] = gamma(pixels[ix + iy * width] * (float)s);
 
                 // MLT中的校正
                 double gamma = 2.2;
