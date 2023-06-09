@@ -7,7 +7,7 @@
 
 #include "glm/gtc/matrix_transform.hpp"
 
-const auto taskNums = 32;
+const auto taskNums = 16;
 SimplePathTracer::Timer timers[taskNums]{};
 
 namespace SimplePathTracer
@@ -66,9 +66,6 @@ namespace SimplePathTracer
                     Vec3 v1 = buffer.positions[buffer.positionIndices[i]];
                     Vec3 v2 = buffer.positions[buffer.positionIndices[i + 1]];
                     Vec3 v3 = buffer.positions[buffer.positionIndices[i + 2]];
-                    //cout << "转换后v1:(" << v1.x << "," << v1.y << "," << v1.z << ")" << endl;
-                    //cout << "转换后v2:(" << v2.x << "," << v2.y << "," << v2.z << ")" << endl;
-                    //cout << "转换后v3:(" << v3.x << "," << v3.y << "," << v3.z << ")" << endl;
                     Triangle* t = new Triangle();
                     t->v1 = v1;
                     t->v2 = v2;
@@ -76,7 +73,6 @@ namespace SimplePathTracer
                     t->normal = glm::normalize(glm::cross(t->v2 - t->v1, t->v3 - t->v1));
                     t->material = mat;
                     scene.triangleBuffer.push_back(*t);
-                    // cout << "i:" << i << endl;
                 }
             }
         }
@@ -112,7 +108,6 @@ namespace SimplePathTracer
             auto hitRecord = Intersection::xSphere(r, s, 0.000001, closest);
             if (hitRecord && hitRecord->t < closest) {
                 closest = hitRecord->t;
-                //cout << "in SPHERE: " << closest << endl;
                 closestHit = hitRecord;
             }
         }
@@ -120,7 +115,6 @@ namespace SimplePathTracer
             auto hitRecord = Intersection::xTriangle(r, t, 0.000001, closest);
             if (hitRecord && hitRecord->t < closest) {
                 closest = hitRecord->t;
-                //cout << "in TRIANGLE: " << closest << endl;
                 closestHit = hitRecord;
             }
         }
@@ -128,7 +122,6 @@ namespace SimplePathTracer
             auto hitRecord = Intersection::xPlane(r, p, 0.000001, closest);
             if (hitRecord && hitRecord->t < closest) {
                 closest = hitRecord->t;
-                //cout << "in PLANE: " << closest << endl;
                 closestHit = hitRecord;
             }
         }

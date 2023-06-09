@@ -170,18 +170,7 @@ namespace Metropolis
             const double d2 = glm::dot(dv, dv); // 两点距离
             return fabs(glm::dot(next.n, dv)) / (d2 * sqrt(d2));
         }
-        inline double GlossyBRDF(const Vec3d wi, const Vec3d n, const Vec3d wo)
-        {
-            const double won = glm::dot(wo, n);
-            const double win = glm::dot(wi, n);
-            const Vec3d r = Reflect(-wi, n);
-            return (Glossiness + 2.0) / (2.0 * PI) * pow(MAX(glm::dot(r, wo), 0.0), Glossiness) / MAX(fabs(win), fabs(won));
-        }
-        inline double GlossyPDF(const Vec3d wi, const Vec3d n, const Vec3d wo)
-        {
-            const Vec3d r = Reflect(-wi, n);
-            return (Glossiness + 1.0) / (2.0 * PI) * pow(MAX(glm::dot(r, wo), 0.0), Glossiness);
-        }
+
         inline double LambertianBRDF(const Vec3d wi, const Vec3d n, const Vec3d wo)
         {
 	        return 1.0 / PI;
@@ -293,11 +282,6 @@ namespace Metropolis
                         continue;
 
                     f = f * (color * BRDF * g);
-                    //if (d0 == Vec3d{ 0.0, 0.0, 0.0 } || d1 == Vec3d{ 0.0, 0.0, 0.0 })
-                    //    continue;
-                    //double pdf = 1 / (2 * PI);
-                    //double n_dot_in = abs(glm::dot(Xb.x[i].n, d0));
-                    //f = f * (color * BRDF * n_dot_in) / pdf;
                 }
                 if (Max(f) <= 0)
                     return Vec3d{ 0, 0, 0 };
@@ -468,10 +452,11 @@ namespace Metropolis
             Vec3d n = { 0, -1, 0 }; // 光源的法向量，就直接这么写在这里了
 
             // 不同的光源方向分布方式
-            // Vec3d d = VecCosine(n, 999.0, prnds[PathRndsOffset + 0], prnds[PathRndsOffset + 1]);
+            Vec3d d = VecCosine(n, 999.0, prnds[PathRndsOffset + 0], prnds[PathRndsOffset + 1]);
             // Vec3d d = VecCosine(n, 2.0, prnds[PathRndsOffset + 0], prnds[PathRndsOffset + 1]);
             // Vec3d d = VecCosine(n, -0.5, prnds[PathRndsOffset + 0], prnds[PathRndsOffset + 1]);
-            Vec3d d = VecRandom(prnds[PathRndsOffset + 0], prnds[PathRndsOffset + 1]);
+            // Vec3d d = VecRandom(prnds[PathRndsOffset + 0], prnds[PathRndsOffset + 1]);
+            // Vec3d d = { 0.0, 0.0, -1.0 };
             PathRndsOffset += NumRNGsPerEvent;
 
             return Ray{p, d};
@@ -483,7 +468,7 @@ namespace Metropolis
             Result.n = 0;
             if (MaxLightEvents == 0)
                 return Result;
-            for (int i = 0; i < MaxEvents; i++)
+            for (int i = 0; i < MaxVertex; i++)
                 Result.x[i].id = -1;
             PathRndsOffset = NumStatesSubpath;
 
@@ -520,7 +505,7 @@ namespace Metropolis
             if (MaxEyeEvents == 0)
                 return Result;
             // 初始化Result中的顶点
-            for (int i = 0; i < MaxEvents; i++) {
+            for (int i = 0; i < MaxVertex; i++) {
                 Result.x[i].id = -1; // -1 表示该顶点还没有东西，另外light_id = -3, camera_id = -2
             }
             PathRndsOffset = 0;
@@ -599,11 +584,6 @@ namespace Metropolis
                     SampledPath.n = NumEyeVertices + NumLightVertices;
 
                     // evaluate the path
-                    //if (NumEyeVertices == 3 && NumLightVertices == 4) {
-                    //    cout << "stop" << endl;
-                    //}
-
-                    // TODO要仔细看看这几个函数
                     Vec3d f = PathThroughput(SampledPath);
                     double p = PathProbablityDensity(SampledPath, PathLength, NumEyeVertices, NumLightVertices);
                     double w = MISWeight(SampledPath, NumEyeVertices, NumLightVertices, PathLength);
@@ -614,8 +594,6 @@ namespace Metropolis
                     Vec3d c = f * (w / p);
                     if (Max(c) <= 0)
                         continue;
-                    //if (std::isnan(c.x) || std::isnan(c.y) || std::isnan(c.z))
-                    //    std::cout << c << endl;
 
                     // store the pixel contribution
                     Result.c[Result.n] = Contribution(px, py, c);
@@ -623,9 +601,6 @@ namespace Metropolis
 
                     // scalar contribution function
                     Result.sc = MAX(Max(c), Result.sc);
-                    if (Result.sc == DOUBLE_INF || std::isnan(c.x) || std::isnan(c.y) || std::isnan(c.z)) {
-                        cout << "PathLength = " << PathLength << ", NumEyeVertices = " << NumEyeVertices << ", NumLightVertices = " << NumLightVertices << ", f = " << f << ", p = " << p << ", w = " << w << ", c = " << c << ", Result.c[Result.n].c = " << Result.c[Result.n].c << endl;
-                    }
                 }
             }
 
@@ -644,8 +619,6 @@ namespace Metropolis
                 if ((ix < 0) || (ix >= width) || (iy < 0) || (iy >= height))
                     continue;
                 pixels[ix + iy * width] += Vec4{ c, 0 }; // TODO 不确定应该怎么写
-                //pixels[(height - iy - 1) * width + ix] = pixels[(height - iy - 1) * width + ix] + Vec4{ c, 0 };
-                //cout << "ix = " << ix << ", iy = " << iy << ", color = " << pixels[(height - ix - 1) * width + iy] << endl;
             }
         }
 

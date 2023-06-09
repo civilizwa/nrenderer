@@ -23,52 +23,44 @@ namespace Metropolis {
 
 
     void MetropolisRenderer::renderTask(RGBA* pixels, int width, int height, int off, int step) {
-        // initialize the Markov chain
+        // 初始化Markov链
         TMarkovChain current, proposal;
-        InitRandomNumbersByChain(current); // 将current的已经生成好的随机数数组u[]赋值给prnd[]
-        current.C = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents));
+        InitRandomNumbersByChain(current); // 将Metropolis类中的随机数数组赋值给current中的随机数数组
+        current.C = CombinePaths(GenerateEyePath(MaxVertex), GenerateLightPath(MaxVertex)); // 用双向路径追踪生成新路径，每条未被遮挡的新路径都会在某一pixel(px, py)上做出contribution(c)，把所有有效的[px, py, c]赋值给current中记录PathContribution的数组C
 
-        // integration
+        // 对路径进行mutation操作
         for (int i = 0; i < mutations; i++) {
-            samps++;
-            // sample the path
-            double isLargeStepDone;
-            if (rnd() <= LargeStepProb)
+            samps++; // 总采样次数
+            double isLargeStepDone; // 取1或0，根据论文中的公式在有无进行large step mutation的情况下分别给contribution乘以不同的系数
+            if (rnd() <= LargeStepProb) // 进行large step mutation的概率，LargeStepProb取0.3
             {
-                proposal = large_step(current);
+                proposal = large_step(current); // large_step()做的事就是重置current的所有随机数得到proposal，所以相当于生成一条全新的光路
                 isLargeStepDone = 1.0;
             }
             else
             {
-                proposal = mutate(current);
+                proposal = mutate(current); // mutate()做的事就是根据论文中的公式对current中的随机数做扰动，得到proposal
                 isLargeStepDone = 0.0;
             }
-            InitRandomNumbersByChain(proposal);
-            proposal.C = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents));
+            InitRandomNumbersByChain(proposal); // 将Metropolis类中的随机数数组赋值给proposal中的随机数数组
+            proposal.C = CombinePaths(GenerateEyePath(MaxVertex), GenerateLightPath(MaxVertex)); // 记录用两条子路径生成的所有有效的[px, py, c]
 
-            //for (int i = 0; i < current.C.n; i++) {
-            //    cout << "i = " << i << ", current.C.c[i].color = " << current.C.c[i].c << endl;
-            //}
-            //cout << endl << endl;
-            //for (int i = 0; i < proposal.C.n; i++) {
-            //    cout << "i = " << i << ", proposal.C.c[i].color = " << proposal.C.c[i].c << endl;
-            //}
-            //cout << endl << endl;
-
-            double a = 1.0; // 接受proposal的概率
+             // 计算接受新路径的概率
+            double a;
             if (current.C.sc > 0.0)
                 a = MAX(MIN(1.0, proposal.C.sc / current.C.sc), 0.0);
 
-            // accumulate samples
+            // 根据论文中的公式将路径的contribution添加到照片上
             if (proposal.C.sc > 0.0)
                 AccumulatePathContribution(pixels, proposal.C, (a + isLargeStepDone) / (proposal.C.sc / b + LargeStepProb));
             if (current.C.sc > 0.0)
                 AccumulatePathContribution(pixels, current.C, (1.0 - a) / (current.C.sc / b + LargeStepProb));
 
-            // update the chain
+            // 根据acceptance更新当前路径
             if (rnd() <= a)
                 current = proposal;
         }
+
     }
 
     auto MetropolisRenderer::render() -> RenderResult {
@@ -86,33 +78,18 @@ namespace Metropolis {
         VertexTransformer vertexTransformer{};
         vertexTransformer.exec(spScene);
 
-        //renderTask(pixels, width, height, 0, 1);
 
-        // estimate normalization constant b是用双向路径追踪计算照片最后的平均亮度
+        // 用双向路径追踪估计照片最后的平均亮度b，b用于最后AccumulatePathContribution中的计算
         for (int i = 0; i < N_Init; i++) {
             InitRandomNumbers();
-            double sc = CombinePaths(GenerateEyePath(MaxEvents), GenerateLightPath(MaxEvents)).sc;
+            Path eyeSubPath = GenerateEyePath(MaxVertex); // MaxVertex: 一条路径上允许的最大顶点数
+            Path lightSubPath = GenerateLightPath(MaxVertex);
+            double sc = CombinePaths(eyeSubPath, lightSubPath).sc; // 用双向路径追踪算法对两条子路径分别取前缀点、取后缀点生成最多MaxVertex^2条新路径，对这些新路径分别计算scalar contribution，取最大值加给b
             b += sc;
-            std::lock_guard<std::mutex> lock(mtx); // 加锁
-
-            //cout << "i = " << i << ", sc = " << sc << endl;
-
-            //Path eyePath = GenerateEyePath(MaxEvents);
-            //Path lightPath = GenerateLightPath(MaxEvents);
-            //PathContribution pc = CombinePaths(eyePath, lightPath);
-            //b += pc.sc;
-            //if (eyePath.n + lightPath.n <= 10) {
-            //    invalid++;
-            //}
-            // cout << "i = " << i << ", sumN = " << eyePath.n + lightPath.n << ", sc = " << pc.sc << endl;            
-            //if (abs(pc.sc) == DOUBLE_INF) {
-            //    cout << "error" << endl;
-            //    return;
-            //}
         }
-
         b /= double(N_Init);
-        cout << "b = " << b << endl; // b = 0.136614
+
+        cout << "b = " << b << endl;
 
         thread t[taskNums];
         for (int i = 0; i < taskNums; i++) {
@@ -156,18 +133,6 @@ namespace Metropolis {
     }
 
     HitRecord MetropolisRenderer::closestHitObject(const Ray& r) {
-        //HitRecord closestHit = nullopt;
-        //float closest = FLOAT_INF;
-
-        // BVH
-        //auto hitRecord = tree->Intersect(r, closest);
-        //if (hitRecord && hitRecord->t < closest) {
-        //    closest = hitRecord->t;
-        //    closestHit = hitRecord;
-        //}
-
-        //return closestHit;
-
         int id = 0;
 
         HitRecord closestHit = nullopt;
@@ -177,7 +142,6 @@ namespace Metropolis {
             id++;
             if (hitRecord && hitRecord->t < closest) {
                 closest = hitRecord->t;
-                // cout << "in PLANE: " << closest << endl;
                 closestHit = hitRecord;
             }
         }
@@ -186,7 +150,6 @@ namespace Metropolis {
             id++;
             if (hitRecord && hitRecord->t < closest) {
                 closest = hitRecord->t;
-                // cout << "in SPHERE: " << closest << endl;
                 closestHit = hitRecord;
             }
         }
@@ -195,7 +158,6 @@ namespace Metropolis {
             id++;
             if (hitRecord && hitRecord->t < closest) {
                 closest = hitRecord->t;
-                // cout << "in TRIANGLE: " << closest << endl;
                 closestHit = hitRecord;
             }
         }
@@ -230,12 +192,6 @@ namespace Metropolis {
         auto [t, emitted, hitLight] = closestHitLight(r);
 
         if (hitObject && hitObject->t < t) {
-            //auto mtlHandle = hitObject->material;
-            //auto scattered = shaderPrograms[mtlHandle.index()]->shade(r, hitObject->hitPoint, hitObject->normal);
-            //auto scatteredRay = scattered.ray;
-            //auto attenuation = scattered.attenuation;
-            //auto emitted = scattered.emitted;
-
             // 把相交点信息添加进path
             Vec3d p = hitObject->hitPoint, n = glm::normalize(hitObject->normal);
             Vec3d dir = { r.direction.x, r.direction.y, r.direction.z };
@@ -250,39 +206,12 @@ namespace Metropolis {
             nr.origin = p;
             nr.direction = VecCosine(n, 1.0, rnd0, rnd1); // 漫反射材质的反射光方向
             trace(path, nr, currDepth + 1);
-                
-
-            // 这里和源程序相比比较奇怪的一点是，trace只是往path中添加了交点信息，而对于相交的颜色的结果是选择丢弃的，到了PathThroughput函数中才去计算某一条Path的color contribution
-            // 这里是不是一个可以改进的地方呢？
-
-            // auto next = trace(path, scatteredRay, currDepth + 1);
-            //float n_dot_in = glm::dot(hitObject->normal, scatteredRay.direction);//cos(N法向量,L光源)
-            //float pdf = scattered.pdf;
-            ///**
-            //    * emitted      - Le(p, w_0)
-            //    * next         - Li(p, w_i)
-            //    * n_dot_in     - cos<n, w_i>
-            //    * atteunation  - BRDF
-            //    * pdf          - p(w)
-            //    **/
-            //    //emitted:直接光照发出的强度
-            //    //后部分是漫反射
-            //return emitted + attenuation * next * n_dot_in / pdf;
-
         }
         else if (t != FLOAT_INF) {
             path.x[path.n] = Vert(hitLight->hitPoint, hitLight->normal, light_id);
             path.n++;
         }
     }
-
-    // 沿单位球面分布的向量
-    //Vec3d MetropolisRenderer::VecRandom(const double rnd1, const double rnd2)
-    //{
-    //    const double temp1 = 2.0 * PI * rnd1, temp2 = 2.0 * rnd2 - 1.0;				// temp1 in [0, 2pi), temp2 in [-1, 1)
-    //    const double s = sin(temp1), c = cos(temp1), t = sqrt(1.0 - temp2 * temp2); // s, c确定两个方位角，t确定维度
-    //    return Vec3d(s * t, temp2, c * t);
-    //}
 
     // 返回沿下半球面一定角度范围内分布的单位向量
     Vec3d MetropolisRenderer::VecRandom(const double rnd1, const double rnd2)

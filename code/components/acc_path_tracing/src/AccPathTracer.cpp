@@ -5,7 +5,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "Onb.hpp"
 
-const auto taskNums = 32;
+const auto taskNums = 16;
 AccPathTracer::Timer timers[taskNums]{};
 
 namespace AccPathTracer
@@ -76,12 +76,6 @@ namespace AccPathTracer
         }
         cout << "threadNum = " << taskNums << ", closestHitObject time per thread with BVH: " << total_ms / taskNums / 1000.0 << "s." << endl;
 
-        //for (int ix = 0; ix < width; ix = ix + 10) {
-        //    for (int iy = 0; iy < height; iy = iy + 10) {
-        //        cout << "ix = " << ix << ", iy = " << iy << ", color = " << pixels[(height - iy - 1) * width + ix] << endl;
-        //    }
-        //}
-
         return { pixels, width, height };
     }
 
@@ -130,9 +124,6 @@ namespace AccPathTracer
         timers[thread_id].start();
         auto hitObject = closestHitObject(r);
         timers[thread_id].stop();
-
-        //if (hitObject)
-            //cout << "hitObject's material: " << hitObject->material.getValue() << endl;
 
         auto [t, emitted] = closestHitLight(r);
         //如果光源与交点之间有物体间隔，则计算的是间接光照

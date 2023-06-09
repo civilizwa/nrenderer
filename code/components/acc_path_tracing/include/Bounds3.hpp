@@ -75,7 +75,6 @@ namespace AccPathTracer {
             float maxZ = std::max(p1.z, std::max(p2.z, std::max(p3.z, p4.z)));
             min = Vec3{ minX, minY, minZ };
             max = Vec3{ maxX, maxY, maxZ };
-            // cout << "min: " << min << ", max: " << max << endl;
         }
         Bounds3(Vec3 v_1,Vec3 v_2,Vec3 v_3,Handle mat) {
             type = Type::MESH;
@@ -101,8 +100,6 @@ namespace AccPathTracer {
             ms->v3 = v3;
             ms->normal = normal;
             ms->material = mat;
-            // cout << "mesh triangle's material: " << mat.getValue() << endl;
-            //cout << "由mesh生成Tranigle" << endl;
         }
 
         Vec3 Centroid() {

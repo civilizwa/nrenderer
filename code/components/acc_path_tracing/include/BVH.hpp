@@ -32,7 +32,6 @@ namespace AccPathTracer {
 			right = r;
 		}
 		void buildBounds(SharedScene spscene, vector<Node> objects) {
-			//cout << "Mesh size:"<<spscene->meshBuffer.size();
 			for (int i = 0; i < objects.size(); i++) {
 				auto node = objects[i];
 				auto model = spscene->models[node.model];
@@ -44,29 +43,16 @@ namespace AccPathTracer {
 					bounds.push_back(Bounds3(&spscene->triangleBuffer[node.entity]));
 				}
 				if (objects[i].type == Node::Type::PLANE) {
-					//cout << objects[i].entity << endl;
-					//cout << objects[i].model << endl;
 					bounds.push_back(Bounds3(&spscene->planeBuffer[node.entity]));
 				}
 				if (objects[i].type == Node::Type::MESH) {
 					Mesh buffer = spscene->meshBuffer[node.entity];
 					Handle mat = buffer.material;
-					// cout << "mesh' material: " << mat.getValue() << endl;
-					//cout << "num of positionIndices:" << buffer.positionIndices.size() << endl;
-					//cout << "num of positions:" << buffer.positions.size() << endl;
-					//cout << "meshBuffer[" << node.entity << "]" << endl;
 					for (int i = 0; i < buffer.positionIndices.size(); i += 3) {
 						Vec3 v1 = buffer.positions[buffer.positionIndices[i]];
 						Vec3 v2 = buffer.positions[buffer.positionIndices[i+1]];
 						Vec3 v3 = buffer.positions[buffer.positionIndices[i+2]];
-
-						// auto triangle = new Triangle(v1, v2, v3);
-					
-						//cout << "转换前v1:(" << v1.x << "," << v1.y << "," << v1.z << ")" << endl;
-						//cout << "转换前v2:(" << v2.x << "," << v2.y << "," << v2.z << ")" << endl;
-						//cout << "转换前v3:(" << v3.x << "," << v3.y << "," << v3.z << ")" << endl;
 						bounds.push_back(Bounds3(v1, v2, v3, mat));
-						// cout << "i:" << i << endl;
 					}
 					
 				}
@@ -144,8 +130,6 @@ namespace AccPathTracer {
 				// cout << "判断mesh面" << endl;
 				auto hitRecord = Intersection::xTriangle(ray, *node->bound.ms, 0.000001, closest);
 				if (hitRecord && hitRecord->t < closest) {
-					// cout << "该面与光线相交" << endl;
-					// cout << node->bound.ms->material.getValue() << endl; 正确的
 					closest = hitRecord->t;
 					closestHit = hitRecord;
 				}
